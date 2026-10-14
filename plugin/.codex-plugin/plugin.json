@@ -1,0 +1,12 @@
+{
+  "name": "labflow",
+  "version": "0.1.0",
+  "description": "Use the local LabFlow experiment learning workspace with learner-requested progressive feedback.",
+  "author": { "name": "LabFlow project" },
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "LabFlow",
+    "shortDescription": "Progressive experiment learning on your laptop",
+    "defaultPrompt": ["Help me learn in LabFlow without revealing answers before I request hints."]
+  }
+}
