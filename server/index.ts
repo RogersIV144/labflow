@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -162,7 +161,7 @@ function safeError(error:unknown) {
   return '检查暂未完成，请检查 Codex 连接后重试。';
 }
 if (process.argv.includes('--production')) app.use(express.static(resolve('dist')));
-else { const vite=await createViteServer({server:{middlewareMode:true,hmr:{port:port+1000}},appType:'spa'}); app.use(vite.middlewares); }
+else { const {createServer:createViteServer}=await import('vite'); const vite=await createViteServer({server:{middlewareMode:true,hmr:{port:port+1000}},appType:'spa'}); app.use(vite.middlewares); }
 app.use((error:Error,_req:express.Request,res:express.Response,_next:express.NextFunction) => {
   res.status(error instanceof z.ZodError ? 400 : 409).json({error:error instanceof z.ZodError ? '输入格式不正确' : error.message});
 });

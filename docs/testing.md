@@ -2,6 +2,12 @@
 
 目标是供队友和学习者试用的本地 Demo；以下是软件行为证据，不是学习效果实验。
 
+## 2026-10-15 分享包验证
+
+新增 `pnpm package:share`，打包预编译网页、独立 Node 服务、MCP、教学 Skill 和 Mac/Windows 启动脚本。队友只需 Node.js 22+；不需要访问私有仓库或安装项目依赖。启动后按本机路径与端口生成 MCP 配置。
+
+`pnpm test:share` 在项目外的临时目录实际解压 ZIP 并启动，验证没有 `node_modules` 也可运行；网页、案例/练习接口、缺少 Codex 时的明确不可用状态、自动 MCP 配置、8 个工具注册及上下文调用均通过。原包不包含 `.labflow`、Git 历史、个人账号凭据或构建者的用户路径。Mac 已实际验证；Windows/Linux 未做真机验证。真实判题继续依赖使用者自己的 Codex，其他 harness 的评分暂不能回写网页。
+
 ## Computer-use 测试
 
 三个 agent 在独立本机端口和数据目录实际操作，没有访问主实例的学习数据或 GitHub。

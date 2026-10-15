@@ -9,3 +9,4 @@ dist/
 coverage/
 tools/bin/
 .labflow-qa-*/
+releases/

@@ -1,0 +1,46 @@
+LabFlow 队友试用包
+==================
+
+不用访问 GitHub、不用安装项目依赖、不用编译。
+
+1. 安装 Node.js 22 或更新版本（已有则跳过）：https://nodejs.org/en/download
+2. 完整解压这个文件夹。
+3. Mac 双击 Start-LabFlow.command；Windows 双击 Start-LabFlow.cmd。
+   Linux 或终端启动：在该文件夹运行 node start.mjs。
+4. 浏览器会自动打开。保持启动窗口打开；关闭窗口或 Ctrl+C 即停止。
+   如果没有自动打开，手动访问启动窗口中显示的网址。
+
+先玩这条路线
+------------
+展开 WB 实验 → 展开一个阶段 → 点节点看细节 → 回忆训练 → Replay。
+试试填空、从连接点连线、空白重建；配图可以先点图再点流程块。
+Replay 中可以记笔记、附图片、修订参考，再看看新的练习是否更新。
+如果操作卡住，记下模式、具体操作、实际结果和你预期的结果，发给项目维护者。
+
+agent 是可选的
+--------------
+未配置 agent 也能使用流程图、训练编辑、图片、提示和 Replay。
+网页聊天/自动检查目前调用你本机自己的 Codex，需要你安装并登录；本包不含作者的账号或额度。
+安装与登录说明（OpenAI 官方）：https://learn.chatgpt.com/docs/codex/cli
+安装后，先在终端运行 codex 完成登录，再启动 LabFlow。
+若命令不在 PATH，可设置 CODEX_BIN 为 Codex 可执行文件的绝对路径。
+Windows 若使用 npm 安装的 codex.cmd，请将 CODEX_BIN 指向实际 codex.exe，或在 WSL 中运行本包。
+在 Mac 上完成了实际测试；Windows/Linux 启动脚本已提供，仍欢迎反馈平台兼容问题。
+
+用自己的 agent harness
+----------------------
+先启动 LabFlow，然后把自动生成的 agent-mcp-config.json 中的 labflow 配置合并到 harness 的 MCP 设置。
+配置中的 Node 路径、MCP 路径与端口按你自己的电脑自动生成，不要直接使用别人的配置文件。
+教学规则见 plugin/skills/labflow-tutor/SKILL.md。让你的 agent 先读规则和 get_learning_context。
+工具可读上下文/参考、请求提示、保存笔记、上传图片、提出修订。
+注意：check_current_answer 仍调用本机 Codex。其他 harness 可读取参考自行讨论，但当前没有把第三方评分写回网页进度的入口。
+MCP 插件入口：plugin/server.mjs；也可以直接运行 node server/mcp.mjs。
+
+数据与分享
+----------
+每个人的草稿、笔记、图片和参考修改保存在自己文件夹的 .labflow 中。
+原始分享包不含私人学习数据、GitHub token、Codex 登录凭据或作者机器路径。
+再次转发请使用原始 ZIP；不要把用过的 .labflow、agent-mcp-config.json 或个人账号目录一起打包。
+这是一款自学 Demo：两次独立完成只是建议进阶，不等于长期掌握或实验室操作资格。
+
+项目：https://github.com/RogersIV144/labflow （目前为私有仓库）

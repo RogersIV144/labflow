@@ -10,7 +10,9 @@
     "test": "vitest run",
     "mcp": "tsx server/mcp.ts",
     "check:codex": "tsx scripts/check-codex.ts",
-    "test:integration": "tsx scripts/check-integration.ts"
+    "test:integration": "tsx scripts/check-integration.ts",
+    "package:share": "pnpm build && node scripts/build-share.mjs",
+    "test:share": "node scripts/check-share.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
@@ -27,6 +29,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "esbuild": "0.28.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "vite": "^7.1.0",
