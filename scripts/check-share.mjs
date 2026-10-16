@@ -26,17 +26,26 @@ try {
   const status=await (await fetch(url+'/api/agent')).json();assert.equal(status.available,false);
   const created=await fetch(url+'/api/tasks',{method:'POST',headers:{Origin:url,'Content-Type':'application/json'},body:JSON.stringify({caseId:'wb',level:'rebuild'})});
   assert.ok(created.ok);const task=await created.json();assert.deepEqual(task.initial.nodes,[]);
+  const post=async(path,body)=>{const response=await fetch(url+'/api'+path,{method:'POST',headers:{Origin:url,'Content-Type':'application/json'},body:JSON.stringify(body)});assert.ok(response.ok);return response.json();};
+  async function check(id,answer){const job=await post('/tasks/'+id+'/check',answer);for(let i=0;i<50;i++){const result=await(await fetch(url+'/api/jobs/'+job.id)).json();if(result.status!=='running')return result;await new Promise(r=>setTimeout(r,50));}throw new Error('offline check timed out');}
+  const blank=await check(task.id,task.initial);assert.equal(blank.status,'completed');assert.equal(blank.feedback.source,'rule');assert.equal(blank.feedback.verdict,'incorrect');
+  const reference=await(await fetch(url+'/api/cases/wb')).json();
+  const detail=await post('/tasks',{caseId:'wb',level:'detail',parentId:'wb-sample'});
+  detail.initial.nodes.forEach((node,i)=>node.label=reference.steps.filter(s=>s.parentId==='wb-sample')[i].title);
+  const correct=await check(detail.id,detail.initial);assert.equal(correct.feedback.source,'rule');assert.equal(correct.feedback.verdict,'correct');
+  const question=await post('/tasks',{caseId:'wb',level:'anomaly'});
+  const subjective=await check(question.id,{nodes:[],edges:[],text:'这个解释需要语义判断'});assert.equal(subjective.status,'completed');assert.equal(subjective.feedback.source,'rule');assert.equal(subjective.feedback.verdict,'uncertain');
   const config=JSON.parse(await readFile(join(root,'agent-mcp-config.json'),'utf8')).mcpServers.labflow;
   assert.equal(config.env.LABFLOW_URL,url);
   await client.connect(new StdioClientTransport({...config,env:{...process.env,...config.env,NODE_PATH:''}}));
   assert.equal((await client.listTools()).tools.length,8);
   const context=await client.callTool({name:'get_learning_context',arguments:{caseId:'wb'}});
-  assert.ok(!context.isError);assert.equal(JSON.parse(context.content[0].text).latestTask.id,task.id);
+  assert.ok(!context.isError);assert.equal(JSON.parse(context.content[0].text).latestTask.id,question.id);
   for(const file of ['server/app.mjs','server/mcp.mjs','START-HERE.txt','plugin/.mcp.json']){
     const text=await readFile(join(root,file),'utf8');assert.ok(!text.includes('/Users/zeng'));assert.ok(!/github_pat_[A-Za-z0-9_]+/.test(text));
   }
   assert.ok(!(await readdir(root)).includes('node_modules'));
-  console.log('PASS: extracted ZIP runs without node_modules; UI/API, missing-Codex behavior, generated MCP config and 8 bundled tools verified; personal runtime files excluded.');
+  console.log('PASS: extracted ZIP runs without node_modules; offline correct/incorrect/uncertain rules, UI/API, generated MCP config and 8 bundled tools verified; personal runtime files excluded.');
 }finally{
   await client.close().catch(()=>{});child.kill('SIGTERM');
   await new Promise(resolve=>{if(child.exitCode!==null)resolve();else child.once('exit',resolve);});

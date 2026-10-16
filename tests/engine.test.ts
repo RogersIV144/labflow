@@ -53,7 +53,7 @@ describe('durable evidence and references',()=>{
       const submittedHelp={assisted:task.assisted,helpLevel:task.helpLevel};await engine.hint(task.id,1);
       const feedback=await engine.record(task.id,{verdict:'correct',detail:'ok',source:'codex'},'s','now',submittedHelp);
       expect(feedback.assisted).toBe(false);expect(engine.task(task.id).assisted).toBe(true);
-      expect(engine.progress()['wb:1:detail'].independent).toHaveLength(1);
+      expect(engine.progress()[`wb:${seedCases[0].revision}:wb-antibody:detail`].independent).toHaveLength(1);
     }finally{await rm(directory,{recursive:true,force:true});}
   });
   it('carries answer exposure across modes and resets only for an explicit fresh round',async()=>{
@@ -63,7 +63,7 @@ describe('durable evidence and references',()=>{
       const first=await engine.newTask('wb','rebuild');await engine.hint(first.id,3);
       const other=await engine.newTask('wb','detail');expect(other.assisted).toBe(true);
       await engine.record(other.id,{verdict:'correct',detail:'ok',source:'codex'},'s','now');
-      expect(engine.progress()['wb:1:detail'].independent).toEqual([]);
+      expect(engine.progress()[`wb:${seedCases[0].revision}:wb-antibody:detail`].independent).toEqual([]);
       const fresh=await engine.newTask('wb','detail',true);expect(fresh.assisted).toBe(false);
       const reloaded=new Engine(directory);await reloaded.init();expect(reloaded.task(fresh.id).assisted).toBe(false);
     }finally{await rm(directory,{recursive:true,force:true});}
@@ -86,17 +86,17 @@ describe('durable evidence and references',()=>{
       const hint=await engine.hint(task.id,1);expect(hint.text).not.toContain('first node');
       const resumed=new Engine(directory);await resumed.init();expect(resumed.task(task.id).assisted).toBe(true);
       await resumed.record(task.id,{verdict:'correct',detail:'ok',source:'codex'},'done','now');
-      expect(resumed.progress()['wb:1:detail'].independent).toEqual([]);expect(resumed.progress()['wb:1:detail'].aided).toBe(1);
+      expect(resumed.progress()[`wb:${seedCases[0].revision}:wb-antibody:detail`].independent).toEqual([]);expect(resumed.progress()[`wb:${seedCases[0].revision}:wb-antibody:detail`].aided).toBe(1);
     } finally {await rm(directory,{recursive:true,force:true});}
   });
   it('keeps old exercises tied to the original reference and rejects conflicting edits',async()=>{
     const directory=await mkdtemp(join(tmpdir(),'labflow-test-'));
     try {
       const engine=new Engine(directory);await engine.init();const task=await engine.newTask('wb','detail');
-      await engine.refine('wb','wb-block',1,{summary:'User refined reference'});
-      expect(engine.getCase('wb').revision).toBe(2);expect(engine.task(task.id).reference.revision).toBe(1);
+      await engine.refine('wb','wb-block',seedCases[0].revision,{summary:'User refined reference'});
+      expect(engine.getCase('wb').revision).toBe(seedCases[0].revision+1);expect(engine.task(task.id).reference.revision).toBe(seedCases[0].revision);
       expect(engine.task(task.id).expected[0].summary).not.toBe('User refined reference');
-      await expect(engine.refine('wb','wb-block',1,{summary:'stale overwrite'})).rejects.toThrow('版本');
+      await expect(engine.refine('wb','wb-block',seedCases[0].revision,{summary:'stale overwrite'})).rejects.toThrow('版本');
     } finally {await rm(directory,{recursive:true,force:true});}
   });
 });

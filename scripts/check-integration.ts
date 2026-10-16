@@ -27,6 +27,9 @@ try {
     await new Promise(resolve=>setTimeout(resolve,100));
   }
   assert.equal((await api('/cases')).length,2);
+  const status=await api('/agent');assert.equal(status.available,true);assert.equal(status.backend,'codex');
+  assert.equal((await api('/agent/models'))[0].model,'test-fixture');
+  assert.equal((await api('/agent/settings',{model:'test-fixture'},'PUT')).model,'test-fixture');
   assert.equal((await fetch(base+'/api/tasks',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'})).status,403);
   const task=await api('/tasks',{caseId:'wb',level:'order'});
   const graph=task.initial;graph.nodes[0].label='草稿恢复测试';
@@ -46,9 +49,9 @@ try {
   assert.equal((await api('/notes/wb/wb-block')).text,'MCP test note');
   const reference=await tool('get_reference',{caseId:'wb'});
   const proposal=await tool('propose_refinement',{caseId:'wb',nodeId:'wb-block',revision:reference.revision,reason:'Integration test',patch:{summary:'Revised locally'}});
-  assert.equal((await api('/cases/wb')).revision,1);
-  assert.equal((await api('/proposals/'+proposal.id+'/accept',{})).revision,2);
-  assert.equal((await api('/tasks/'+task.id)).revision,1);
+  assert.equal((await api('/cases/wb')).revision,reference.revision);
+  assert.equal((await api('/proposals/'+proposal.id+'/accept',{})).revision,reference.revision+1);
+  assert.equal((await api('/tasks/'+task.id)).revision,reference.revision);
   const pixel='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
   const media=await tool('upload_image',{data:pixel});assert.equal((await fetch(base+'/api/media/'+media.id)).headers.get('content-type'),'image/png');
   const exercise=await api('/tasks',{caseId:'jtc',level:'anomaly'});
@@ -64,13 +67,23 @@ try {
   assert.equal((await api('/tasks/'+exercise.id)).initial.text,'Edited after submission');
   assert.equal((await api('/jobs/'+job.id+'/cancel',{})).cancelled,false);
   assert.equal((await api('/jobs/'+job.id)).status,'completed');
+  const review=await api('/tasks/'+exercise.id+'/review',{});
+  assert.equal(review.assisted,true);assert.equal(review.snapshotId,job.id);
+  assert.ok(!JSON.stringify(review).includes('PRIVATE FIXTURE'));
+  const phase=await api('/tasks',{caseId:'wb',level:'detail',parentId:'wb-sample'});
+  assert.equal(phase.parentId,'wb-sample');assert.equal(phase.initial.nodes.length,4);
+  const firstQuestion=await api('/tasks',{caseId:'wb',level:'anomaly'});
+  const nextQuestion=await api('/tasks',{caseId:'wb',level:'anomaly'});
+  assert.notEqual(firstQuestion.questionId,nextQuestion.questionId);
+  const fallback=await api('/tasks',{caseId:'wb',level:'detail',generate:true});
+  assert.equal(fallback.generation.source,'preset');
   const cancelTask=await api('/tasks',{caseId:'wb',level:'anomaly',freshRound:true});
   const cancelled=await api('/tasks/'+cancelTask.id+'/check',submitted);
   assert.equal((await api('/jobs/'+cancelled.id+'/cancel',{})).cancelled,true);
   await new Promise(resolve=>setTimeout(resolve,700));
   assert.equal((await api('/jobs/'+cancelled.id)).status,'cancelled');
-  assert.equal((await api('/progress'))['wb:2:anomaly'],undefined);
-  console.log('PASS: HTTP persistence, long edge IDs, cross-site guard, 8 MCP tools, hint state, notes, refinement, image upload, submission snapshots, duplicate checks and cancellation. Synthetic harness used only for transport race checks.');
+  assert.equal((await api('/progress'))[`wb:${reference.revision+1}:wb-antibody:anomaly`],undefined);
+  console.log('PASS: HTTP persistence, long edge IDs, cross-site guard, 8 MCP tools, hint state, notes, refinement, image upload, submission snapshots, duplicate checks/cancellation, model settings, phase selection, question rotation, review snapshot and generation fallback. Synthetic harness used only for transport/race checks.');
 }finally{
   await client.close().catch(()=>{});server.kill('SIGTERM');
   await new Promise<void>(resolve=>{if(server.exitCode!==null)resolve();else server.once('exit',()=>resolve());});

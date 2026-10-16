@@ -19,4 +19,4 @@ During learning and replay, answer the concrete question concisely from the sele
 
 Use notes for personal observations. For reference text and attachments, propose a refinement with its source and rationale; the learner confirms it in the webpage. Preserve unresolved conditions and source conflicts. Do not turn an uncertain document statement into a unique examination answer.
 
-The local application owns state and feedback disclosure. The existing Codex harness owns inference. If the app or harness is unavailable, say that the check did not complete; do not substitute a fabricated result.
+The local application owns state and feedback disclosure. Inference uses the learner's configured Codex harness or HTTP model service. Exact graph answers may be checked locally; preserve the returned source (rule, codex, api). A local uncertain result means semantic evaluation is incomplete, not that the answer is wrong. Do not fabricate a result when a required model service is unavailable. Detailed corrections are available only when the learner explicitly requests them, and count as assisted practice.

@@ -20,12 +20,16 @@ Replay 中可以记笔记、附图片、修订参考，再看看新的练习是�
 agent 是可选的
 --------------
 未配置 agent 也能使用流程图、训练编辑、图片、提示和 Replay。
-网页聊天/自动检查目前调用你本机自己的 Codex，需要你安装并登录；本包不含作者的账号或额度。
+已知名称/别名、连线与配图可本地检查，来源标为“规则检查”；主观解释或未知同义表达无法本地确定时显示“暂无法判断”，不算错。
+网页聊天、主观判答与AI出题可调用你本机自己的 Codex，或配置自己的 HTTP 模型服务；本包不含作者的账号或额度。
 安装与登录说明（OpenAI 官方）：https://learn.chatgpt.com/docs/codex/cli
 安装后，先在终端运行 codex 完成登录，再启动 LabFlow。
 若命令不在 PATH，可设置 CODEX_BIN 为 Codex 可执行文件的绝对路径。
 Windows 若使用 npm 安装的 codex.cmd，请将 CODEX_BIN 指向实际 codex.exe，或在 WSL 中运行本包。
 在 Mac 上完成了实际测试；Windows/Linux 启动脚本已提供，仍欢迎反馈平台兼容问题。
+HTTP/CC Switch 接入的环境变量例子见 docs/ai-backends.md；支持 Chat Completions 和 Responses。
+不要把 API URL 填到 CODEX_BIN；API key 仅放在本机启动环境，不能放到 issue 或分享包中。
+网页右上角“模型设置”可选择并保存模型。
 
 用自己的 agent harness
 ----------------------
@@ -33,12 +37,14 @@ Windows 若使用 npm 安装的 codex.cmd，请将 CODEX_BIN 指向实际 codex.
 配置中的 Node 路径、MCP 路径与端口按你自己的电脑自动生成，不要直接使用别人的配置文件。
 教学规则见 plugin/skills/labflow-tutor/SKILL.md。让你的 agent 先读规则和 get_learning_context。
 工具可读上下文/参考、请求提示、保存笔记、上传图片、提出修订。
-注意：check_current_answer 仍调用本机 Codex。其他 harness 可读取参考自行讨论，但当前没有把第三方评分写回网页进度的入口。
+注意：check_current_answer 优先使用本地规则，语义部分使用已配置的 Codex/HTTP 服务。其他 harness 可读取参考自行讨论，当前没有把任意第三方评分写回网页进度的入口。
 MCP 插件入口：plugin/server.mjs；也可以直接运行 node server/mcp.mjs。
 
 数据与分享
 ----------
 每个人的草稿、笔记、图片和参考修改保存在自己文件夹的 .labflow 中。
+升级时先停止旧服务。可把旧文件夹的 .labflow 复制到新解压目录，再启动新版；原目录保留作为备份。
+第一次升级会另存 state.before-v0.2.json；旧题继续使用旧参考，新建题使用新版。笔记和用户修订会保留。
 原始分享包不含私人学习数据、GitHub token、Codex 登录凭据或作者机器路径。
 再次转发请使用原始 ZIP；不要把用过的 .labflow、agent-mcp-config.json 或个人账号目录一起打包。
 这是一款自学 Demo：两次独立完成只是建议进阶，不等于长期掌握或实验室操作资格。

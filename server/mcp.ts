@@ -14,10 +14,10 @@ async function request(path:string,body?:unknown,method?:string) {
   const data=await result.json();if(!result.ok)throw new Error(data.error||'Local app unavailable');return data;
 }
 const wrap=(fn:(args:any)=>Promise<unknown>)=>async(args:any)=>{try{return{content:[{type:'text' as const,text:JSON.stringify(await fn(args))}]};}catch(e){return{isError:true,content:[{type:'text' as const,text:(e as Error).message}]};}};
-const server=new McpServer({name:'labflow',version:'0.1.0'});
+const server=new McpServer({name:'labflow',version:'0.2.0'});
 server.tool('get_learning_context','Read the latest exercise, submitted draft, help level and progress. Contains no reference answers.',{caseId:z.enum(['wb','jtc'])},wrap(({caseId})=>request('/context/'+caseId)));
 server.tool('get_reference','Read reference material for private evaluation or requested learning explanations. Do not expose hidden answers during recall practice.',{caseId:z.enum(['wb','jtc'])},wrap(({caseId})=>request('/cases/'+caseId)));
-server.tool('check_current_answer','Invoke the existing Codex harness to check the saved draft. Returns a job ID; no automatic hints.',{taskId:z.string()},wrap(async({taskId})=>{const task=await request('/tasks/'+encodeURIComponent(taskId));return request('/tasks/'+encodeURIComponent(taskId)+'/check',task.initial);}));
+server.tool('check_current_answer','Check the saved draft using local rules, then the configured model for unresolved semantics. Returns a job ID and an explicit source; no automatic hints.',{taskId:z.string()},wrap(async({taskId})=>{const task=await request('/tasks/'+encodeURIComponent(taskId));return request('/tasks/'+encodeURIComponent(taskId)+'/check',task.initial);}));
 server.tool('get_check_result','Read check status and public verdict. Does not reveal private diagnostics.',{jobId:z.string()},wrap(({jobId})=>request('/jobs/'+encodeURIComponent(jobId))));
 server.tool('request_hint','Use only when the learner explicitly requests help. Level 1 broad direction, 2 specific diagnosis, 3 complete answer only explicitly requested.',{taskId:z.string(),level:z.number().int().min(1).max(3)},wrap(({taskId,level})=>request('/tasks/'+encodeURIComponent(taskId)+'/hint',{level})));
 server.tool('save_note','Save a learner-requested personal note without changing reference answers.',{caseId:z.enum(['wb','jtc']),nodeId:z.string(),text:z.string().max(12000)},wrap(({caseId,nodeId,text})=>request('/notes/'+caseId+'/'+encodeURIComponent(nodeId),{text},'PUT')));
