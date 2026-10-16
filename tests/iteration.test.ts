@@ -41,9 +41,9 @@ describe('issue iteration',()=>{
   it('falls back from invalid AI masks and unverified scenarios; keeps authoritative rubric',async()=>{
     const invalid=await generateExercise(bridge([{masked:['outside','wb-block']}]),wb,'detail',0,{});
     expect(invalid.generation?.source).toBe('preset');
-    const unverified=await generateExercise(bridge([{prompt:'这是新情境但引入未知事实并要求学习者解释为什么。',rubric:'这是不应被采纳的私有新评分依据。'},{valid:false}]),wb,'anomaly',0,{});
+    const unverified=await generateExercise(bridge([{prompt:'这是新情境但引入未知事实并要求学习者解释为什么。'},{valid:false}]),wb,'anomaly',0,{});
     expect(unverified.generation?.source).toBe('preset');
-    const verified=await generateExercise(bridge([{prompt:'面对当前题目中同学的建议，请你根据已有观察说明如何评价并给出理由。',rubric:wb.anomalies[0].rubric},{valid:true}]),wb,'anomaly',0,{});
+    const verified=await generateExercise(bridge([{prompt:'面对当前题目中同学的建议，请你根据已有观察说明如何评价并给出理由。'},{valid:true}]),wb,'anomaly',0,{});
     expect(verified.question?.rubric).toBe(wb.anomalies[0].rubric);expect(verified.generation?.source).toBe('ai');
   });
   it('changes repeated masks and does not count a paraphrase as new independent evidence',async()=>{
@@ -59,9 +59,10 @@ describe('issue iteration',()=>{
   });
   it('prevents named hidden steps entering broad replies and rejects fabricated answer quotes',async()=>{
     const task=createTask(wb,'detail');
-    expect(await focusedReply(bridge([{text:'先做封闭，再一抗孵育，然后洗膜。'}]),task,'提示一下','先思考阶段目标。',1)).toBe('先思考阶段目标。');
+    expect(await focusedReply(bridge([{text:'先做封闭，再一抗孵育，然后洗膜。'}]),task,'提示一下','先思考阶段目标。',1)).toContain('未完成或未通过范围核对');
     const anomaly=createTask(wb,'anomaly',1);
-    expect(await focusedReply(bridge([{text:'必须内参归一化、线性范围和独立重复。'},{valid:false}]),anomaly,'提示一下','先区分观察和结论。',1)).toBe('先区分观察和结论。');
+    const fallback=await focusedReply(bridge([{text:'必须内参归一化、线性范围和独立重复。'},{valid:false}]),anomaly,'提示一下','先区分观察和结论。',1);
+    expect(fallback).toContain('未完成或未通过范围核对');expect(fallback).not.toContain('必须内参归一化');
     task.lastSubmission=solved(task);task.lastSubmission.text='我写出的答案';task.lastFeedback={verdict:'incorrect',message:'有错误',source:'codex',helpLevel:0,assisted:false,snapshotId:'s',submittedAt:'now'};
     await expect(detailedReview(bridge([{text:'点评',annotations:[{quote:'我没有写过',kind:'incorrect',explanation:'原因',suggestion:'修正',source:task.expected[0].source}]}]),task)).rejects.toThrow('引用核对');
   });

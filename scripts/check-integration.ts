@@ -33,7 +33,7 @@ try {
   assert.equal((await fetch(base+'/api/tasks',{method:'POST',headers:{Origin:'https://other.example','Content-Type':'application/json'},body:'{}'})).status,403);
   const task=await api('/tasks',{caseId:'wb',level:'order'});
   const graph=task.initial;graph.nodes[0].label='草稿恢复测试';
-  graph.edges=[{id:'xy-edge__'+graph.nodes[0].id+'-'+graph.nodes[1].id,source:graph.nodes[0].id,target:graph.nodes[1].id}];
+  graph.edges=[{id:'xy-edge__'+graph.nodes[0].id+'-'+graph.nodes[1].id,source:graph.nodes[0].id,target:graph.nodes[1].id,sourceHandle:'right',targetHandle:'left'}];
   assert.ok(graph.edges[0].id.length>80);
   await api('/tasks/'+task.id+'/draft',graph,'PUT');
   assert.deepEqual((await api('/tasks/'+task.id)).initial,graph);
@@ -43,6 +43,8 @@ try {
   assert.equal(names.length,8);
   const context=await tool('get_learning_context',{caseId:'wb'});
   assert.equal(context.latestTask.id,task.id);assert.equal(context.latestTask.reference,undefined);
+  assert.equal(context.latestTask.initial.edges[0].sourceHandle,'right');
+  assert.equal(context.latestTask.initial.edges[0].targetHandle,'left');
   const hint=await tool('request_hint',{taskId:task.id,level:1});assert.equal(hint.assisted,true);
   assert.equal((await api('/tasks',{caseId:'wb',level:'detail'})).assisted,true);
   await tool('save_note',{caseId:'wb',nodeId:'wb-block',text:'MCP test note'});
@@ -75,6 +77,11 @@ try {
   const firstQuestion=await api('/tasks',{caseId:'wb',level:'anomaly'});
   const nextQuestion=await api('/tasks',{caseId:'wb',level:'anomaly'});
   assert.notEqual(firstQuestion.questionId,nextQuestion.questionId);
+  const checkOnly=await api('/chat',{caseId:'wb',taskId:nextQuestion.id,message:'封闭液和一抗稀释液可以通用吗？只说对不对，不解释。'});
+  assert.equal(checkOnly.requestCheck,true);assert.ok(!checkOnly.text.includes('非特异性'));
+  const noExplanation=await api('/chat',{caseId:'wb',taskId:nextQuestion.id,message:'封闭液和一抗稀释液有什么区别？不要解释概念，也不用给提示。'});
+  assert.equal(noExplanation.helpLevel,(await api('/tasks/'+nextQuestion.id)).helpLevel);
+  assert.ok(noExplanation.text.includes('不提供解释或提示'));assert.ok(!noExplanation.text.includes('非特异性'));
   const fallback=await api('/tasks',{caseId:'wb',level:'detail',generate:true});
   assert.equal(fallback.generation.source,'preset');
   const cancelTask=await api('/tasks',{caseId:'wb',level:'anomaly',freshRound:true});

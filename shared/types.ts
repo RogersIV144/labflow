@@ -13,7 +13,10 @@ export interface LabCase {
   sources: string[]; caveats: string[]; anomalies: Anomaly[];
 }
 export interface AnswerNode { id: string; label: string; position: { x: number; y: number }; media: string[] }
-export interface AnswerEdge { id: string; source: string; target: string }
+export interface AnswerEdge {
+  id: string; source: string; target: string;
+  sourceHandle?: string | null; targetHandle?: string | null;
+}
 export interface Answer { nodes: AnswerNode[]; edges: AnswerEdge[]; text: string }
 export interface PublicTask {
   id: string; caseId: string; revision: number; level: Level; prompt: string;

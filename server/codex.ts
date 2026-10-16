@@ -76,7 +76,7 @@ export class CodexBridge {
         this.child?.stdin.write(JSON.stringify({ id: message.id, error: { code: -32601, message: 'LabFlow does not authorize this action' } }) + '\n');
       } else this.events.emit('notification', message);
     });
-    await this.request('initialize', { clientInfo: { name: 'labflow', title: 'LabFlow Tutor', version: '0.2.0' }, capabilities: { experimentalApi: true } });
+    await this.request('initialize', { clientInfo: { name: 'labflow', title: 'LabFlow Tutor', version: '0.2.1' }, capabilities: { experimentalApi: true } });
     this.child.stdin.write(JSON.stringify({ method: 'initialized', params: {} }) + '\n');
     const models = await this.request('model/list', { limit: 100 });
     this.defaultModel = models.data.find((model:any) => model.isDefault)?.model;

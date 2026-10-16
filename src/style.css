@@ -96,3 +96,23 @@ button:disabled{opacity:.7;color:#525d53}
 .scenario>p.scenario-source{font-size:10px;line-height:1.4;margin:0 0 8px;color:#536255;overflow-wrap:anywhere}
 .scenario textarea{min-height:100px;flex:1;max-height:240px;padding:10px;line-height:1.6}
 .exercise-focus:has(+ .exercise-meta) p{max-width:100%}
+
+/* Give the graph a full-width working area when the learner asks for it. */
+.app-shell.focus-canvas{grid-template-columns:minmax(0,1fr)}
+.focus-canvas .sidebar,.focus-canvas .coach-panel,.focus-canvas .workspace-heading{display:none}
+.focus-canvas .workspace{grid-column:1;min-width:0}
+.focus-canvas .exercise-focus,.focus-canvas .exercise-meta{display:none}
+.focus-canvas .exercise-header{padding:7px 20px}
+.focus-canvas .scope-select{margin-top:4px}
+.focus-canvas .canvas-area{min-height:280px}
+.focus-canvas .react-flow__controls{bottom:13px}
+.canvas-tools .focus-toggle,.canvas-instruction .focus-toggle{background:#e1ece2;color:#245a45;border:1px solid #7eaa90;border-radius:7px;padding:7px 10px;font-weight:700;white-space:nowrap}
+.canvas-instruction .focus-toggle{margin-left:6px}
+.canvas-tools .focus-toggle[aria-pressed=true],.canvas-instruction .focus-toggle[aria-pressed=true]{background:#275e48;color:#fff}
+.model-unavailable{padding:9px 10px;border-radius:6px;background:#f2f4ee}
+.media-cards button[draggable=true]{cursor:grab;touch-action:none}
+.media-cards button[draggable=true]:active{cursor:grabbing}
+.react-flow__handle.legacy-handle{opacity:0;pointer-events:none}
+.focus-canvas .mode-bar,.focus-canvas .exercise-header,.focus-canvas .learning-footer,.focus-canvas .replay-bar{display:none}
+.focus-context{margin-right:auto;color:#375847;font-size:11px;font-weight:700}
+@media(max-height:790px){.focus-canvas .answer-bar{padding:6px 16px 5px}.focus-canvas .answer-bar>textarea{height:30px;min-height:30px}.focus-canvas .answer-actions{min-height:40px}.focus-canvas .media-tray{padding:5px 14px}}

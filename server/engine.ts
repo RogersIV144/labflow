@@ -8,6 +8,7 @@ export interface Task extends PublicTask {
   reference: LabCase; expected: Step[]; mapping: Record<string, string>; masked: string[];
   fingerprint: string; credited: boolean; draft: Answer; lastAssessment?: Assessment; lastFeedback?: Feedback;
   question?: Anomaly; lastSubmission?: Answer;
+  specificHint?: {snapshotId:string;text:string};
 }
 export interface TaskOptions { parentId?: string; anomalyId?: string; masked?: string[]; question?: Anomaly; generation?: PublicTask['generation'] }
 interface Store {
@@ -184,6 +185,11 @@ export class Engine {
     this.state.proposals=this.state.proposals.filter(p=>p.id!==id);await this.save();return result;
   }
   nextVariant(caseId:string,level:Level,parentId?:string) { return Object.values(this.state.tasks).filter(t=>t.caseId===caseId&&t.level===level&&(!parentId||t.parentId===parentId)).length; }
+  generationOptions(caseId:string,level:Level,options:TaskOptions):TaskOptions {
+    if(level!=='anomaly'||options.anomalyId)return options;
+    const active=this.state.tasks[this.state.activeTasks[caseId]];
+    return active?.level==='anomaly'&&active.questionId?{...options,anomalyId:active.questionId}:options;
+  }
   async newTask(caseId: string, level: Level, freshRound = false, options:TaskOptions={}) {
     const parentId=options.parentId||this.getCase(caseId).practiceParent;
     const variant = this.nextVariant(caseId,level,parentId);
@@ -204,6 +210,11 @@ export class Engine {
   }
   async draft(id: string, answer: Answer) { const task=this.task(id);task.draft = clone(answer);this.state.activeTasks[task.caseId]=id; await this.save(); }
   async markAssisted(id: string, level: number) { const task = this.task(id); task.assisted = true; task.helpLevel = Math.max(task.helpLevel,level); this.state.exposure[`${task.caseId}:${task.revision}`] = task.helpLevel; await this.save(); }
+  async saveSpecificHint(id:string,snapshotId:string,text:string) {
+    const task=this.task(id);
+    if(task.lastFeedback?.snapshotId!==snapshotId)return;
+    task.specificHint={snapshotId,text};await this.save();
+  }
   async hint(id: string, requested: number) {
     const task = this.task(id);
     if (requested < 1 || requested > 3) throw new Error('提示级别无效');
@@ -216,13 +227,14 @@ export class Engine {
     const focus = task.expected[Math.max(0, Math.min(task.expected.length-1, assessment?.focusIndex || 0))];
     const specific = !assessment ? '这次还没有成功取得评价。请先完成一次检查；若检查遇到连接或限流问题，可以稍后重试。'
       : assessment.verdict === 'correct' ? '这次提交已正确。可以收起帮助，再独立重建一次。'
-      : task.level === 'anomaly' ? '先检查你的结论是否有题目中的证据支持，以及有没有把一种可能原因当成唯一原因。再回看你写出的理由。'
+      : task.level === 'anomaly' ? '精确提示暂不可用：需要核对上次已检查提交中的一处原句或遗漏；未返回通用提示或完整答案。'
       : `这次先检查「${focus.title}」这一处。它的目的：${focus.why} 检查点：${focus.check} 先处理这一处，其余流程留给你继续推敲。`;
     return { helpLevel: task.helpLevel, assisted: true, text: requested === 1 ? broad : requested === 3 ? full : specific };
   }
   async record(id: string, assessment: Assessment, snapshotId: string, submittedAt: string, helpAtSubmit?:{assisted:boolean;helpLevel:number}, submission?:Answer) {
     const task = this.task(id);
     task.lastAssessment = assessment;
+    delete task.specificHint;
     if(submission)task.lastSubmission=clone(submission);
     const feedback = publicFeedback(task, assessment, snapshotId, submittedAt);
     if(helpAtSubmit){feedback.assisted=helpAtSubmit.assisted;feedback.helpLevel=helpAtSubmit.helpLevel;}

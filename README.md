@@ -20,7 +20,7 @@ pnpm start
 
 ## 发给队友试用
 
-运行 `pnpm package:share` 生成 `releases/LabFlow-0.2.0-team.zip`。队友只需 Node.js 22+，完整解压后使用 Mac/Windows 启动脚本，不需要安装项目依赖或构建。包内含启动说明、AI 接入文档和可连接自己 harness 的 MCP 接口。
+运行 `pnpm package:share` 生成 `releases/LabFlow-0.2.1-team.zip`。队友只需 Node.js 22+，完整解压后使用 Mac/Windows 启动脚本，不需要安装项目依赖或构建。包内含启动说明、[人工测试指南](docs/manual-testing-0.2.1.md)、AI 接入文档和可连接自己 harness 的 MCP 接口。
 
 分享包只包含预置案例和编译产物，不包含 `.labflow`、账户凭据或个人笔记。请转发原始 ZIP，而不是使用后的目录。
 
@@ -34,6 +34,8 @@ pnpm start
 6. 切到联合傅里叶相关，演示同一机制复用于另一类实验。
 
 阶段和题型分别保留草稿。「换一题」切换掩码或轮换情境；「AI 出题」可选择掩码或生成经过依据核对的情境变式，失败明确回退预置题。默认只判对错；「详细点评与修订」仅在主动点击后显示原句、类别、修订建议和来源，并计入辅助练习。生成内容仍需要人的内容审阅，核对不等于保证没有幻觉。
+
+笔记本上可用「展开画布」获得更多操作空间。异常题的「再具体一点」只定位最近已检查提交中的一处，重复请求保持同一个点；修改答案后需重新检查。明确提问封闭液与一抗稀释液、归一化、重复、线性范围或膜预处理时，可获得限定概念的解释；超出已支持范围时明确说明限制。「AI 出题」保留当前情境，评分标准由服务器保留。
 
 「收起帮助，开始新一轮独立回忆」才明确开启新的无资料尝试。两次不同题目的独立完成仅建议进阶，不代表长期保持或实验室操作能力。当前没有延迟测验或真正的掌握度估计。
 
@@ -72,7 +74,7 @@ MCP 使用 `.labflow/control-token` 的本机控制令牌，启动时轮换；�
 
 网页右上角「模型设置」可选择模型，保存到 `.labflow/agent-settings.json`。HTTP 兼容模式使用 `LABFLOW_AI_BACKEND=openai-compatible`、`LABFLOW_API_BASE_URL`、`LABFLOW_MODEL`、可选 `LABFLOW_API_KEY` 与 `LABFLOW_API_STYLE`。支持 Chat Completions / Responses，详见 [接入说明](docs/ai-backends.md)。密钥仅由本机环境变量读取，不写入网页或分享包；`CODEX_BIN` 不能填写 API URL。
 
-升级沿用原 `.labflow` 目录即可；首次升级会保存 `state.before-v0.2.json`，补充新案例内容，保留已有用户修订、笔记、图片与旧题参考快照。旧题继续使用原参考版本，创建新题后才使用新版。详细变更见 [0.2.0 迭代说明](docs/release-0.2.0.md)。
+升级沿用原 `.labflow` 目录即可；首次升级会保存 `state.before-v0.2.json`，补充新案例内容，保留已有用户修订、笔记、图片与旧题参考快照。旧题继续使用原参考版本，创建新题后才使用新版。详细变更见 [0.2.1 修复说明](docs/release-0.2.1.md)与 [0.2.0 迭代说明](docs/release-0.2.0.md)。
 
 ## 验证
 

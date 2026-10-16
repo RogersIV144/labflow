@@ -28,7 +28,7 @@ try {
   await writeFile(join(target,'plugin/.mcp.json'),JSON.stringify(manifest,null,2)+'\n');
   await cp('scripts/share',target,{recursive:true});
   await mkdir(join(target,'docs'),{recursive:true});
-  for(const file of ['ai-backends.md','wb-sources.md','release-0.2.0.md'])await cp(join('docs',file),join(target,'docs',file));
+  for(const file of ['ai-backends.md','wb-sources.md','release-0.2.0.md','release-0.2.1.md','manual-testing-0.2.1.md'])await cp(join('docs',file),join(target,'docs',file));
   const windows=join(target,'Start-LabFlow.cmd');
   await writeFile(windows,(await readFile(windows,'utf8')).replace(/\r?\n/g,'\r\n'));
   await chmod(join(target,'Start-LabFlow.command'),0o755);

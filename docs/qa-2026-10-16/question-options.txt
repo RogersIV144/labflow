@@ -1,0 +1,95 @@
+Browser tab: 3, Title: "LabFlow · 从理解到熟练", URL: "http://127.0.0.1:4332/".
+0 AXWebArea LabFlow · 从理解到熟练, URL: 127.0.0.1:4332/
+	1 container root
+		2 container
+			3 link Description: LabFlow 首页, Value: 127.0.0.1:4332/
+			4 text 本地空间
+			5 button Codex 已连接
+			6 button 模型设置
+				7 image
+			8 text L
+		9 container
+			10 image
+			11 text 实验知识库 02
+			12 button Western Blot 生物实验
+				13 image
+				14 text Western Blot
+				15 text 生物实验
+			16 button 联合傅里叶相关 光学实验
+				17 image
+				18 text 联合傅里叶相关
+				19 text 光学实验
+			20 text 学习路线 01 建立整体印象 02 理解操作与原因 03 独立重建流程 04 处理异常情境 循序渐进
+			21 heading 0 / 2 次独立完成, Value: 3
+				22 text 0 / 2 次独立完成
+			23 text 提示由你决定何时开启。得到帮助的作答会单独记录。  内容保存在这台电脑 INFO5000 · Group 8 Demo
+		24 container
+			25 text 实验知识库
+			26 image
+			27 text 生物实验
+			28 heading Western Blot, Value: 1
+				29 text Western Blot
+			87 text 参考 v 2
+			31 button 学习
+				32 image
+				33 text 学习
+			34 button 回忆训练
+				35 image
+				36 text 回忆训练
+			37 button 检验
+				38 image
+				39 text 检验
+			40 button Replay
+				41 image
+				42 text Replay
+			149 image
+			89 text 草稿已保存 异常判断 · 迁移理解
+			90 button 换一题
+				91 image
+				92 text 换一题
+			93 button AI 出题
+				94 image
+				95 text AI 出题
+			96 text 异常情境
+			97 pop up button (collapsed, settable) Description: 选择异常情境, Value: 步骤因果, Secondary Actions: Expand
+				98 menu
+					99 背景与曝光
+					100 结果解读
+					101 封闭液选择
+					102 膜预处理
+					103 大蛋白转膜
+					104 (selected) 步骤因果
+					105 系统排查
+			106 text 当前情境 题库练习  · AI 出题未完成或未通过核对，已使用预置练习。 已获得帮助
+			147 button 收起帮助，开始新一轮独立回忆
+			107 text 步骤因果
+			108 heading 在当前参考流程中，一位同学把“封闭”和“一抗孵育”交换了顺序，认为最后都做过就等价。你如何评价？请解释顺序的作用，以及出现异常时能下到什么程度的结论。, Value: 2
+				109 text 在当前参考流程中，一位同学把“封闭”和“一抗孵育”交换了顺序，认为最后都做过就等价。你如何评价？请解释顺序的作用，以及出现异常时能下到什么程度的结论。
+			110 text entry area (settable) 异常判断答案
+			138 text 先独立尝试，再决定是否需要帮助。
+			139 button (disabled) 详细点评与修订
+				145 image
+				141 text 详细点评与修订
+			142 button 检查答案
+				143 image
+				144 text 检查答案
+			118 button 给我一个提示
+				119 image
+				120 text 给我一个提示
+			148 button 再具体一点
+			121 button 查看完整答案
+		75 container
+			76 image
+			77 text 学习伙伴 让思考留在你手里 Codex 保持恰当的学习难度
+			78 heading 我先检查， 不替你想完。, Value: 2
+				79 text 我先检查，
+不替你想完。
+			80 text 默认只告诉你是否有错。需要时，再由你请求一个方向或更具体的帮助。
+			81 image
+			82 text 当前学习对话 可以说：“给我一个提示”。答案请提交到左侧练习区。
+			83 text entry area (settable) 向学习伙伴提问
+			122 button (disabled) 写入答案
+			85 button (disabled) 发送问题
+				86 image
+
+The focused UI element is 97 pop up button (collapsed, settable) Description: 选择异常情境, Value: 步骤因果, Secondary Actions: Expand
