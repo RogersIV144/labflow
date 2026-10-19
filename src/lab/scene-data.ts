@@ -1,6 +1,6 @@
 import type { LabCase } from '../../shared/types';
 
-export type Station = 'reagents' | 'sample' | 'centrifuge' | 'gel' | 'transfer' | 'tray' | 'imager' | 'laser' | 'iris' | 'filter' | 'lens' | 'input' | 'camera';
+export type Station = 'reagents' | 'sample' | 'centrifuge' | 'gel' | 'transfer' | 'tray' | 'imager' | 'laser' | 'iris' | 'filter' | 'lens' | 'input' | 'camera' | 'fourier';
 export interface SceneLesson {
   station: Station;
   equipment: string;
@@ -42,11 +42,33 @@ export const lessons: Record<string, SceneLesson> = {
 
 export const stationNames: Record<Station, string> = {
   reagents:'试剂与耗材', sample:'样品工作区', centrifuge:'离心机', gel:'电泳槽', transfer:'转膜工作区', tray:'孵育与洗膜', imager:'成像与分析',
-  laser:'激光器', iris:'光轴基准', filter:'空间滤波器', lens:'准直与变换透镜', input:'输入显示面', camera:'采集相机',
+  laser:'激光器', iris:'光轴基准', filter:'空间滤波器', lens:'准直透镜', fourier:'傅里叶透镜', input:'输入显示面', camera:'采集相机',
 };
 
 export function lessonForStep(lab: LabCase, id?: string) {
-  if (id && lessons[id]) return id;
+  if (id && lab.sequence.includes(id) && lessons[id]) return id;
   const child = lab.sequence.find(key => lab.steps.find(step => step.id === key)?.parentId === id);
   return child || lab.sequence[0];
+}
+
+export function scenePhases(lab: LabCase) {
+  const phases: { id: string; title: string; steps: string[] }[] = [];
+  for (const id of lab.sequence) {
+    let top = lab.steps.find(step => step.id === id);
+    const seen = new Set<string>();
+    while (top?.parentId && top.parentId !== lab.rootId && !seen.has(top.id)) {
+      seen.add(top.id);
+      top = lab.steps.find(step => step.id === top!.parentId);
+    }
+    const phaseId = top?.id || id;
+    let phase = phases.find(item => item.id === phaseId);
+    if (!phase) { phase = { id: phaseId, title: top?.title || id, steps: [] }; phases.push(phase); }
+    phase.steps.push(id);
+  }
+  return phases;
+}
+
+export function practiceScope(lab: LabCase, id: string) {
+  const parent = lab.steps.find(step => step.id === id)?.parentId;
+  return parent && lab.practiceParents.includes(parent) ? parent : lab.practiceParents[0] || lab.practiceParent;
 }

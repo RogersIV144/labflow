@@ -49,7 +49,10 @@ export class CodexBridge {
       this.startupError = 'CODEX_BIN 需要本机可执行文件路径；HTTP 地址请使用 LABFLOW_API_BASE_URL';
       throw new Error(this.startupError);
     }
-    this.child = spawn(binary, ['app-server', '--listen', 'stdio://'], { cwd: this.cwd, env: process.env, stdio: 'pipe' });
+    // JS harness entrypoints are not directly executable on Windows. Use the
+    // current Node runtime, preserving argv and avoiding a shell/quoting layer.
+    const script = /\.(?:mjs|cjs|js)$/i.test(binary);
+    this.child = spawn(script ? process.execPath : binary, [...(script ? [resolve(binary)] : []), 'app-server', '--listen', 'stdio://'], { cwd: this.cwd, env: process.env, stdio: 'pipe' });
     this.child.stderr.on('data', data => { this.log = (this.log + data.toString()).slice(-2000); });
     const fail = (error?: Error) => {
       this.ready = false;
@@ -76,7 +79,7 @@ export class CodexBridge {
         this.child?.stdin.write(JSON.stringify({ id: message.id, error: { code: -32601, message: 'LabFlow does not authorize this action' } }) + '\n');
       } else this.events.emit('notification', message);
     });
-    await this.request('initialize', { clientInfo: { name: 'labflow', title: 'LabFlow Tutor', version: '0.2.1' }, capabilities: { experimentalApi: true } });
+    await this.request('initialize', { clientInfo: { name: 'labflow', title: 'LabFlow Tutor', version: '0.3.0' }, capabilities: { experimentalApi: true } });
     this.child.stdin.write(JSON.stringify({ method: 'initialized', params: {} }) + '\n');
     const models = await this.request('model/list', { limit: 100 });
     this.defaultModel = models.data.find((model:any) => model.isDefault)?.model;

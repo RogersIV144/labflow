@@ -4,11 +4,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Station } from './scene-data';
+import { opticalSignals } from './scene-state';
+import { frameBounds } from './scene-camera';
 
-export interface SceneHandle { focus: () => void; reset: () => void; view: (view: 'perspective'|'top') => void; }
+export interface SceneHandle { focus: (station?: Station) => void; reset: () => void; view: (view: 'perspective'|'top') => void; }
 interface Props {
   caseId: string; stepId: string; station: Station; action: number; total: number;
-  paused: boolean; exploded: boolean; exposure: number; alignment: number; onInspect: (station: Station) => void;
+  isolated: boolean; running: boolean; exploded: boolean; exposure: number; alignment: number; onInspect: (station: Station) => void; onViewChange: (view: 'perspective'|'top'|'focus'|'free') => void;
 }
 type Model = {
   root: THREE.Group;
@@ -52,7 +54,7 @@ function cable(parent: THREE.Object3D, points: number[][], color: number, radius
   const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p as [number, number, number])));
   const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 36, radius, 8, false), material(color)); parent.add(mesh); return mesh;
 }
-function signalTexture(kind: 'input'|'spectrum'|'correlation'|'blot', exposure = 40) {
+function signalTexture(kind: 'input'|'spectrum'|'correlation'|'blot'|'empty', exposure = 40) {
   const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 180;
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = kind === 'blot' ? '#c6d0c4' : '#0b2025'; ctx.fillRect(0, 0, 256, 180);
@@ -66,6 +68,9 @@ function signalTexture(kind: 'input'|'spectrum'|'correlation'|'blot', exposure =
     }
   } else if (kind === 'correlation') {
     [53, 128, 203].forEach((x, i) => { const gradient = ctx.createRadialGradient(x, 90, 0, x, 90, i === 1 ? 22 : 14); gradient.addColorStop(0, '#f3f6c3'); gradient.addColorStop(.25, '#c4d991'); gradient.addColorStop(1, 'rgba(178,213,145,0)'); ctx.fillStyle = gradient; ctx.fillRect(x - 24, 60, 48, 60); });
+  } else if (kind === 'empty') {
+    ctx.strokeStyle = '#486359'; ctx.lineWidth = 1; ctx.strokeRect(16, 16, 224, 148);
+    ctx.fillStyle = '#b4c8b7'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('AWAITING CAPTURE', 128, 94);
   } else {
     ctx.fillStyle = '#4a6158'; ctx.font = '12px sans-serif'; ['M','C1','C2','T1','T2'].forEach((s, i) => ctx.fillText(s, 18 + i * 48, 18));
     for (let i = 0; i < 5; i++) {
@@ -75,7 +80,7 @@ function signalTexture(kind: 'input'|'spectrum'|'correlation'|'blot', exposure =
   }
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
 }
-function screen(parent: THREE.Object3D, x: number, y: number, z: number, w: number, h: number, kind: 'input'|'spectrum'|'correlation'|'blot') {
+function screen(parent: THREE.Object3D, x: number, y: number, z: number, w: number, h: number, kind: 'input'|'spectrum'|'correlation'|'blot'|'empty') {
   box(parent, w + .16, h + .16, .12, x, y, z - .04, palette.dark);
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: signalTexture(kind) }));
   mesh.position.set(x, y, z + .025); parent.add(mesh); return mesh;
@@ -192,7 +197,7 @@ function buildWB(): Model {
     wells.forEach((well, i) => (well.material as THREE.MeshStandardMaterial).color.setHex(props.stepId === 'wb-quantify' && props.action ? [0x6e6d9f, 0x8d7faf, 0xb9a9ce][i % 3] : 0x9cacc5));
     const spinning = props.stepId === 'wb-collect' && props.action === 2;
     separated.visible=props.stepId==='wb-collect'&&props.action>=3;
-    rotor.rotation.y += spinning ? dt * 13 : 0;
+    rotor.rotation.y += spinning && props.running ? dt * 13 : 0;
     lid.rotation.x = THREE.MathUtils.damp(lid.rotation.x, spinning ? 0 : -1.13, 5, dt);
     bands.forEach((band, i) => { const row = i % 3; const target = props.station === 'gel' ? 1.18 - row * (.12 + .15 * fraction) - .23 * fraction : .9 - row * .2; band.position.y = THREE.MathUtils.damp(band.position.y, target, 4, dt); });
     stack.forEach((layer, i) => { layer.position.y = THREE.MathUtils.damp(layer.position.y, .23 + i * (props.exploded ? .25 : .06), 5, dt); stackLabels[i].position.y = layer.position.y; stackLabels[i].visible = props.exploded; });
@@ -238,24 +243,26 @@ function buildOptics(): Model {
   const inputFace=new THREE.Group();inputFace.rotation.y=Math.PI/2;input.add(inputFace);
   const inputDisplay = screen(inputFace, 0, 1.4, .085, 1.05, .85, 'input');
   label(input, 'INPUT / SLM', 0, .13, .55, 1.15);
-  const transformLens = new THREE.Group(); transformLens.position.set(3, 1.1, 0); transformLens.userData.station = 'lens'; root.add(transformLens);
+  const transformLens = new THREE.Group(); stations.fourier = transformLens; transformLens.position.set(3, 1.1, 0); transformLens.userData.station = 'fourier'; root.add(transformLens);
   box(transformLens, .85, .1, .8, 0, .06, 0, palette.dark); cylinder(transformLens, .065, .9, 0, .55, 0, palette.metal); lens(transformLens, .56);
   const camera = mount('camera', 5.1); box(camera, .95, .8, .95, .22, 1.4, 0, palette.white, .07);
   const objective = cylinder(camera, .25, .4, -.43, 1.4, 0, palette.dark); objective.rotation.z = Math.PI / 2;
   label(camera, 'CAMERA', .2, 1.45, .5, .75);
   const monitor = new THREE.Group(); monitor.position.set(3.85, 1.1, -1.9); monitor.rotation.y = -.1; monitor.userData.station = 'camera'; root.add(monitor);
   box(monitor, .95, .08, .55, 0, .05, 0, palette.dark); cylinder(monitor, .06, .65, 0, .4, 0, palette.metal);
-  const output = screen(monitor, 0, 1.25, .06, 1.7, 1.12, 'spectrum');
+  const output = screen(monitor, 0, 1.25, .06, 1.7, 1.12, 'empty');
   label(monitor, 'SYNTHETIC PREVIEW', 0, .57, .12, 1.3);
+  camera.attach(monitor); // Keep detector and readout together when framing the camera station.
   cable(root, [[5.45, 2.4, .45], [5.9, 1.4, .7], [5, 1.3, -1.8], [3.85, 1.6, -1.9]], 0x293e3a, .025);
   const beam = new THREE.Group(); root.add(beam);
-  const beamMat = new THREE.MeshBasicMaterial({ color: 0xf5a991, transparent: true, opacity: .55, depthWrite: false });
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0xff8b64, transparent: true, opacity: .8, depthWrite: false, toneMapped: false });
   const segments: THREE.Mesh[] = [];
+  const spreads: THREE.Mesh[] = [];
   const beamPoints = [-4.3, -3.65, -2.25, -.7, 1.05, 3, 4.6];
   for (let i = 0; i < beamPoints.length - 1; i++) {
     const a = beamPoints[i], b = beamPoints[i + 1];
-    const light = new THREE.Mesh(new THREE.CylinderGeometry(.013, .013, b - a, 12), beamMat); light.rotation.z = Math.PI / 2; light.position.set((a + b) / 2, beamY, 0); beam.add(light); segments.push(light);
-    const spread = new THREE.Mesh(new THREE.CylinderGeometry(i === 1 ? .025 : .18, i === 1 ? .18 : .18, b - a, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0xeaa48a, transparent: true, opacity: .05, side: THREE.DoubleSide, depthWrite: false })); spread.rotation.z = Math.PI / 2; spread.position.copy(light.position); beam.add(spread);
+    const light = new THREE.Mesh(new THREE.CylinderGeometry(.032, .032, b - a, 12), beamMat); light.rotation.z = Math.PI / 2; light.position.set((a + b) / 2, beamY, 0); beam.add(light); segments.push(light);
+    const spread = new THREE.Mesh(new THREE.CylinderGeometry(i === 1 ? .025 : .18, i === 1 ? .18 : .18, b - a, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0xeaa48a, transparent: true, opacity: .05, side: THREE.DoubleSide, depthWrite: false })); spread.rotation.z = Math.PI / 2; spread.position.copy(light.position); beam.add(spread); spreads.push(spread);
   }
   const target = new THREE.Mesh(new THREE.RingGeometry(.12, .14, 40), new THREE.MeshBasicMaterial({ color: 0xe9c17b, side: THREE.DoubleSide })); target.rotation.y = Math.PI / 2; target.position.set(4.55, beamY, 0); beam.add(target);
   const photons = new THREE.Group(); root.add(photons);
@@ -264,97 +271,184 @@ function buildOptics(): Model {
   [-5.1, -3.65, -2.25, -.7, 1.05, 3, 5.1].forEach((x, i) => { const tag = label(root, annotation[i], x, 1.16, 1.23, i === 2 || i === 3 ? 1.35 : 1.1, '#c6d3c4', '#364d47'); tag.rotation.x = -Math.PI / 2; });
   let previousInput = '', previousOutput = '';
   return { root, stations, update(props, time) {
-    const reload = props.stepId === 'jtc-read' || props.stepId === 'jtc-reload' && props.action >= 2;
-    const inputKind = reload ? 'spectrum' : 'input';
-    const outputKind = props.stepId === 'jtc-read' && props.action >= 1 ? 'correlation' : 'spectrum';
+    const { input: inputKind, output: outputKind } = opticalSignals(props.stepId, props.action);
     if (previousInput !== inputKind) { inputDisplay.material.map?.dispose(); inputDisplay.material.map = signalTexture(inputKind); inputDisplay.material.needsUpdate = true; previousInput = inputKind; }
     if (previousOutput !== outputKind) { output.material.map?.dispose(); output.material.map = signalTexture(outputKind); output.material.needsUpdate = true; previousOutput = outputKind; }
     const deviation = props.alignment / 170;
     beam.position.z = deviation;
     target.scale.setScalar(props.stepId === 'jtc-collimate' ? 1 + Math.abs(props.alignment) / 25 : 1);
-    photons.children.forEach((p, i) => { const t = (time * .3 + i / 7) % 1; p.position.set(-4.3 + t * 8.85, beamY, deviation); });
+    photons.children.forEach((p, i) => { const t = (time * .3 + i / 7) % 1; p.position.set(-4.3 + t * 8.85, beamY, deviation); p.visible = Math.abs(props.alignment) < 45 || p.position.x < -2.25; });
     beamMat.opacity = Math.abs(props.alignment) > 35 ? .22 : .65;
-    segments.forEach((part, i) => { part.visible = i < 2 || Math.abs(props.alignment) < 45; });
+    segments.forEach((part, i) => { part.visible = i < 2 || Math.abs(props.alignment) < 45; spreads[i].visible = part.visible; });
   } };
 }
 
 export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, ref) {
   const host = useRef<HTMLDivElement>(null);
   const current = useRef(props); current.current = props;
-  const controlsRef = useRef<OrbitControls | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const modelRef = useRef<Model | null>(null);
-  const focusActive = useRef(false);
-  const targetCamera = useRef<THREE.Vector3 | null>(null);
-  const targetLook = useRef<THREE.Vector3 | null>(null);
+  const runtime = useRef<(SceneHandle & { invalidate: () => void; stepChanged: () => void }) | null>(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
-  const setView = (view: 'perspective'|'top') => {
-    const camera = cameraRef.current, controls = controlsRef.current;
-    if (!camera || !controls) return;
-    focusActive.current = false; targetCamera.current = new THREE.Vector3(...(view === 'top' ? [0, 20, .01] : [9.6, 8.8, 12.3]) as [number,number,number]); targetLook.current = new THREE.Vector3(0,1.15,0);
-  };
-  const focus = () => { const active = modelRef.current?.stations[current.current.station]; if (!active) return; focusActive.current = true; targetLook.current = new THREE.Vector3(active.position.x, 1.9, active.position.z); targetCamera.current = new THREE.Vector3(active.position.x+3.5,6.4,active.position.z+6.4); };
-  useEffect(()=>{if(focusActive.current)focus();},[props.station]);
-  useImperativeHandle(ref, () => ({ reset: () => setView('perspective'), view: setView, focus }));
+  const [attempt, setAttempt] = useState(0);
+  useImperativeHandle(ref, () => ({ focus: station => runtime.current?.focus(station), reset: () => runtime.current?.reset(), view: view => runtime.current?.view(view) }), []);
+  useEffect(() => { runtime.current?.stepChanged(); }, [props.stepId]);
+  useEffect(() => { runtime.current?.invalidate(); }, [props.action, props.running, props.exploded, props.exposure, props.alignment, props.station, props.isolated]);
+
   useEffect(() => {
     const container = host.current!;
     let renderer: THREE.WebGLRenderer;
-    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' }); }
+    setReady(false); setError(false);
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
     catch { setError(true); return; }
-    setReady(false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = .88;
     container.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(37, 1, .1, 100); camera.position.set(9.6, 8.8, 12.3); cameraRef.current = camera;
-    const controls = new OrbitControls(camera, renderer.domElement); controls.target.set(0, 1.15, 0); controls.enableDamping = true; controls.enablePan = false; controls.minDistance = 5; controls.maxDistance = 29; controls.minPolarAngle = .03; controls.maxPolarAngle = Math.PI * .49; controlsRef.current = controls;
-    const room = new RoomEnvironment(); const pmrem = new THREE.PMREMGenerator(renderer); const environment = pmrem.fromScene(room, .05); scene.environment = environment.texture; room.dispose(); pmrem.dispose();
-    scene.add(new THREE.HemisphereLight(0xdceee2, 0x314f44, 1.2));
-    const sun = new THREE.DirectionalLight(0xfff4d6, 3); sun.position.set(-4, 12, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.left = -10; sun.shadow.camera.right = 10; sun.shadow.camera.top = 8; sun.shadow.camera.bottom = -8; sun.shadow.normalBias = .03; sun.shadow.bias = -.0003; scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xbadfd9, 2); fill.position.set(6, 6, -6); scene.add(fill);
-    const model = props.caseId === 'jtc' ? buildOptics() : buildWB(); scene.add(model.root); modelRef.current = model;
-    const ring = new THREE.Mesh(new THREE.RingGeometry(.55, .58, 64), new THREE.MeshBasicMaterial({ color: 0xd0dcb5, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 1.165; scene.add(ring);
+    scene.environmentIntensity = .65;
+    const camera = new THREE.PerspectiveCamera(37, 1, .1, 160);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = .12; controls.enablePan = false;
+    controls.minDistance = 2.5; controls.maxDistance = 80;
+    controls.minPolarAngle = .03; controls.maxPolarAngle = Math.PI * .48;
+    const room = new RoomEnvironment(); const pmrem = new THREE.PMREMGenerator(renderer);
+    const environment = pmrem.fromScene(room, .05); scene.environment = environment.texture; room.dispose(); pmrem.dispose();
+    scene.add(new THREE.HemisphereLight(0xdceee2, 0x314f44, .9));
+    const sun = new THREE.DirectionalLight(0xfff4d6, 2.2); sun.position.set(-4, 12, 6); sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024); sun.shadow.camera.left = -10; sun.shadow.camera.right = 10; sun.shadow.camera.top = 8; sun.shadow.camera.bottom = -8; sun.shadow.normalBias = .025; sun.shadow.bias = -.0003; scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xbadfd9, 1.1); fill.position.set(6, 6, -6); scene.add(fill);
+    const model = props.caseId === 'jtc' ? buildOptics() : buildWB(); scene.add(model.root);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.62, .66, 48), new THREE.MeshBasicMaterial({ color: 0xe3e7ad, transparent: true, opacity: .9, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 1.17; scene.add(ring);
+    const inspectionBase = new THREE.Mesh(new RoundedBoxGeometry(1, .09, 1, 2, .025), material(0x648778));
+    inspectionBase.receiveShadow = true; scene.add(inspectionBase);
+    let view: 'perspective'|'top'|'focus'|'free' = 'perspective';
+    let focusedStation = current.current.station;
+    let targetCamera: THREE.Vector3 | null = null, targetLook: THREE.Vector3 | null = null;
+    let frame = 0, disposed = false, lost = false, visible = true, previous = performance.now(), elapsed = 0, settleUntil = 0;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const request = () => { if (!disposed && !lost && visible && !document.hidden && !frame) frame = requestAnimationFrame(animate); };
+    const invalidate = () => { settleUntil = performance.now() + 1100; renderer.shadowMap.needsUpdate = true; request(); };
+    const frameView = (immediate = false) => {
+      if (view === 'free') return;
+      controls.enableDamping = false; controls.update(); controls.enableDamping = true;
+      model.root.updateMatrixWorld(true);
+      const object = view === 'focus' ? model.stations[focusedStation] || model.root : model.root;
+      const bounds = new THREE.Box3().setFromObject(object);
+      // Frame the working surface, not the large decorative floor below the bench.
+      if (view !== 'focus') { bounds.min.y = .9; bounds.min.z = -2.8; bounds.max.z = 2.8; bounds.min.x = -6.7; bounds.max.x = 6.7; }
+      // Include the opened transfer layers even while they are still interpolating.
+      if (view === 'focus' && focusedStation === 'transfer') bounds.max.y = Math.max(bounds.max.y, 3.3);
+      const direction = view === 'top' ? new THREE.Vector3(.001, 1, .04) : view === 'focus' ? new THREE.Vector3(2.8, 3.6, 5.8) : new THREE.Vector3(8, 7.5, 12);
+      const fitted = frameBounds(bounds, camera.aspect, camera.fov, direction, view === 'focus' ? 1.1 : 1.06);
+      targetCamera = fitted.position; targetLook = fitted.target;
+      if (immediate || reducedMotion.matches) { camera.position.copy(targetCamera); controls.target.copy(targetLook); targetCamera = null; targetLook = null; }
+      invalidate();
+    };
+    const changeView = (next: 'perspective'|'top') => { view = next; current.current.onViewChange(next); frameView(); };
+    runtime.current = {
+      reset: () => changeView('perspective'), view: changeView,
+      focus: station => { focusedStation = station || current.current.station; view = 'focus'; current.current.onViewChange(view); frameView(); },
+      stepChanged: () => { focusedStation = current.current.station; if (view === 'focus') frameView(); invalidate(); },
+      invalidate,
+    };
     const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2();
     const hit = (event: PointerEvent) => {
-      const rect = renderer.domElement.getBoundingClientRect(); pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
-      raycaster.setFromCamera(pointer, camera); const hits = raycaster.intersectObject(model.root, true);
-      for (const item of hits) { let object: THREE.Object3D | null = item.object; while (object && !object.userData.station) object = object.parent; if (object?.userData.station) return object.userData.station as Station; }
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+      raycaster.setFromCamera(pointer, camera);
+      // Hidden animation props must not intercept clicks on visible instruments.
+      for (const item of raycaster.intersectObject(model.root, true)) {
+        let object: THREE.Object3D | null = item.object, stationId: Station | undefined, shown = true;
+        while (object) { if (!object.visible) shown = false; if (object.userData.station) stationId = object.userData.station; object = object.parent; }
+        if (!shown) continue;
+        return stationId; // Do not pick through the bench or a foreground object.
+      }
       return undefined;
     };
-    let downX = 0, downY = 0;
-    const down = (event: PointerEvent) => { targetCamera.current=null;targetLook.current=null; downX = event.clientX; downY = event.clientY; };
-    const up = (event: PointerEvent) => { if (Math.hypot(event.clientX - downX, event.clientY - downY) < 5) { const selected = hit(event); if (selected) current.current.onInspect(selected); } };
-    const move = (event: PointerEvent) => { renderer.domElement.style.cursor = hit(event) ? 'pointer' : 'grab'; };
-    const contextLost = (event: Event) => { event.preventDefault(); setError(true); };
-    renderer.domElement.addEventListener('pointerdown', down); renderer.domElement.addEventListener('pointerup', up); renderer.domElement.addEventListener('pointermove', move); renderer.domElement.addEventListener('webglcontextlost', contextLost);
-    const resize = () => { const w = container.clientWidth, h = container.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
-    const observer = new ResizeObserver(resize); observer.observe(container); resize();
-    let visible = true;
-    const intersection = new IntersectionObserver(entries => { visible = entries[0]?.isIntersecting ?? true; }); intersection.observe(container);
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let frame = 0, previous = performance.now(), elapsed = 0;
-    const animate = (now: number) => {
-      frame = requestAnimationFrame(animate);
-      const dt = Math.min((now - previous) / 1000, .05); previous = now;
-      if (!visible || document.hidden) return;
-      const operationDt=current.current.paused?0:dt;
-      if (!reducedMotion.matches && !current.current.paused) elapsed += dt;
-      if (targetCamera.current && targetLook.current) { const blend = reducedMotion.matches ? 1 : 1-Math.exp(-dt*5); camera.position.lerp(targetCamera.current,blend); controls.target.lerp(targetLook.current,blend); if(camera.position.distanceTo(targetCamera.current)<.01) {targetCamera.current=null;targetLook.current=null;} }
-      controls.update(); model.update(current.current, elapsed, operationDt);
-      const active = model.stations[current.current.station];
+    let down: { x: number; y: number; id: number } | undefined;
+    const pointerDown = (event: PointerEvent) => { down = { x: event.clientX, y: event.clientY, id: event.pointerId }; };
+    const pointerUp = (event: PointerEvent) => {
+      if (down && event.pointerId === down.id && Math.hypot(event.clientX - down.x, event.clientY - down.y) < 5 && event.button === 0) {
+        const selected = hit(event); if (selected) current.current.onInspect(selected);
+      }
+      down = undefined;
+    };
+    const pointerCancel = () => { down = undefined; };
+    const pointerMove = (event: PointerEvent) => { if (!down) renderer.domElement.style.cursor = hit(event) ? 'pointer' : 'grab'; };
+    const controlStart = () => { targetCamera = null; targetLook = null; };
+    const controlChange = () => { request(); };
+    const manualMove = (event: PointerEvent) => {
+      if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) >= 5 && view !== 'free') { view = 'free'; current.current.onViewChange(view); }
+    };
+    const wheel = () => { view = 'free'; targetCamera = null; targetLook = null; current.current.onViewChange(view); };
+    const contextLost = (event: Event) => { event.preventDefault(); lost = true; cancelAnimationFrame(frame); frame = 0; setError(true); };
+    renderer.domElement.addEventListener('pointerdown', pointerDown);
+    renderer.domElement.addEventListener('pointerup', pointerUp);
+    renderer.domElement.addEventListener('pointercancel', pointerCancel);
+    renderer.domElement.addEventListener('pointermove', pointerMove);
+    renderer.domElement.addEventListener('pointermove', manualMove);
+    renderer.domElement.addEventListener('wheel', wheel, { passive: true });
+    renderer.domElement.addEventListener('webglcontextlost', contextLost);
+    controls.addEventListener('start', controlStart); controls.addEventListener('change', controlChange);
+    const resize = () => {
+      const w = container.clientWidth, h = container.clientHeight; if (!w || !h) return;
+      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); frameView(true); invalidate();
+    };
+    const observer = new ResizeObserver(resize); observer.observe(container);
+    const intersection = new IntersectionObserver(entries => {
+      visible = entries[0]?.isIntersecting ?? true;
+      if (visible) { previous = performance.now(); invalidate(); } else { cancelAnimationFrame(frame); frame = 0; }
+    }); intersection.observe(container);
+    const visibility = () => {
+      if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else { previous = performance.now(); invalidate(); }
+    };
+    document.addEventListener('visibilitychange', visibility);
+    reducedMotion.addEventListener('change', invalidate);
+    function animate(now: number) {
+      frame = 0;
+      if (disposed || lost || !visible || document.hidden) return;
+      const elapsedFrame = Math.max((now - previous) / 1000, .001);
+      const dt = Math.min(elapsedFrame, .1); previous = now;
+      const moving = current.current.running && !reducedMotion.matches;
+      if (moving) elapsed += dt;
+      if (targetCamera && targetLook) {
+        const blend = reducedMotion.matches ? 1 : 1 - Math.exp(-elapsedFrame * 7);
+        camera.position.lerp(targetCamera, blend); controls.target.lerp(targetLook, blend);
+        if (camera.position.distanceTo(targetCamera) < .005) { camera.position.copy(targetCamera); controls.target.copy(targetLook); targetCamera = null; targetLook = null; }
+      }
+      const damping = controls.update();
+      const inspectionTarget = model.stations[focusedStation];
+      for (const child of model.root.children) child.visible = !current.current.isolated || child === inspectionTarget;
+      inspectionBase.visible = current.current.isolated && Boolean(inspectionTarget);
+      if (inspectionBase.visible && inspectionTarget) {
+        const bounds = new THREE.Box3().setFromObject(inspectionTarget), size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
+        inspectionBase.position.set(center.x, 1.04, center.z); inspectionBase.scale.set(size.x + .8, 1, size.z + .7);
+      }
+      model.update({ ...current.current, running: moving }, elapsed, reducedMotion.matches ? 100 : Math.min(elapsedFrame, 1));
+      const active = model.stations[current.current.isolated ? focusedStation : current.current.station];
       if (active) { ring.position.x = active.position.x; ring.position.z = active.position.z; ring.scale.setScalar(current.current.station === 'imager' ? 1.65 : 1.3); }
+      if (moving || now < settleUntil) renderer.shadowMap.needsUpdate = true;
       renderer.render(scene, camera);
-    };
-    animate(performance.now()); setReady(true);
+      if (moving || targetCamera || damping || now < settleUntil) request();
+    }
+    resize(); setReady(true);
     return () => {
-      cancelAnimationFrame(frame); observer.disconnect(); intersection.disconnect(); controls.dispose();
-      renderer.domElement.removeEventListener('pointerdown', down); renderer.domElement.removeEventListener('pointerup', up); renderer.domElement.removeEventListener('pointermove', move); renderer.domElement.removeEventListener('webglcontextlost', contextLost);
-      const geometries = new Set<THREE.BufferGeometry>(); const materials = new Set<THREE.Material>(); const textures = new Set<THREE.Texture>();
-      scene.traverse(object => { if (object instanceof THREE.Mesh) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) { materials.add(m); if (m.map) textures.add(m.map); } } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose()); environment.dispose(); renderer.dispose(); container.replaceChildren(); controlsRef.current = null; cameraRef.current = null;
+      disposed = true; cancelAnimationFrame(frame); observer.disconnect(); intersection.disconnect();
+      document.removeEventListener('visibilitychange', visibility); reducedMotion.removeEventListener('change', invalidate);
+      controls.removeEventListener('start', controlStart); controls.removeEventListener('change', controlChange); controls.dispose();
+      renderer.domElement.removeEventListener('pointerdown', pointerDown); renderer.domElement.removeEventListener('pointerup', pointerUp); renderer.domElement.removeEventListener('pointercancel', pointerCancel); renderer.domElement.removeEventListener('pointermove', pointerMove); renderer.domElement.removeEventListener('pointermove', manualMove); renderer.domElement.removeEventListener('wheel', wheel); renderer.domElement.removeEventListener('webglcontextlost', contextLost);
+      const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
+      scene.traverse(object => { if (object instanceof THREE.Mesh) {
+        geometries.add(object.geometry);
+        for (const m of Array.isArray(object.material) ? object.material : [object.material]) { materials.add(m); if (m.map) textures.add(m.map); }
+      } });
+      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose());
+      sun.shadow.dispose(); environment.dispose(); renderer.dispose(); container.replaceChildren(); runtime.current = null;
     };
-  }, [props.caseId]);
-  return <><div ref={host} className="lab-webgl" role="img" aria-label={`${props.caseId === 'jtc' ? '光学' : '生物'}实验器材三维教学模型，可拖动旋转。操作导览提供等效文字说明。`}/>{error ? <div className="scene-fallback"><strong>三维场景暂不可用</strong><p>浏览器未能启用 WebGL。可继续使用操作导览，或在支持硬件加速的浏览器中打开。</p></div> : !ready && <div className="scene-fallback">正在布置实验台…</div>}</>;
+  }, [props.caseId, attempt]);
+  return <><div ref={host} className="lab-webgl" role="img" aria-label={`${props.caseId === 'jtc' ? '光学' : '生物'}实验器材三维教学模型，可拖动旋转；也可用下方器材按钮和操作导览浏览。`}/>{error ? <div className="scene-fallback" role="status"><strong>三维场景暂不可用</strong><p>可继续使用操作导览。开启浏览器硬件加速后，可重新加载场景。</p><button onClick={() => setAttempt(value => value + 1)}>重新加载三维场景</button></div> : !ready && <div className="scene-fallback">正在布置实验台…</div>}</>;
 });

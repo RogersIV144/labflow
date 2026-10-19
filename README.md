@@ -20,15 +20,15 @@ pnpm start
 
 ## 发给队友试用
 
-运行 `pnpm package:share` 生成 `releases/LabFlow-0.2.1-team.zip`。队友只需 Node.js 22+，完整解压后使用 Mac/Windows 启动脚本，不需要安装项目依赖或构建。包内含启动说明、[人工测试指南](docs/manual-testing-0.2.1.md)、AI 接入文档和可连接自己 harness 的 MCP 接口。
+运行 `pnpm package:share` 生成 `releases/LabFlow-0.3.0-team.zip`。队友只需 Node.js 22+，完整解压后使用 Mac/Windows 启动脚本，不需要安装项目依赖或构建。包内含启动说明、[3D 人工测试指南](docs/manual-testing-0.3.0.md)、AI 接入文档和可连接自己 harness 的 MCP 接口。
 
 分享包只包含预置案例和编译产物，不包含 `.labflow`、账户凭据或个人笔记。请转发原始 ZIP，而不是使用后的目录。
 
 ## 五分钟演示
 
-「学习」和 Replay 提供「实验场景 / 流程图」切换：WB 19 步、JTC 8 步可在三维实验台中逐项演示。拖动旋转、滚轮缩放，点击器材或「靠近当前操作」查看细节；支持俯视、播放/暂停、转膜夹层与光轴调整。场景和二维读出均为教学合成示意，不计入独立完成次数。使用方法、截图与验证边界见 [交互实验场景说明](docs/interactive-lab-scenes.md)。
+「学习」和 Replay 提供「实验场景 / 流程图」切换：WB 19 步、JTC 8 步可在三维实验台中逐项演示。拖动旋转、滚轮缩放，从阶段栏进入具体步骤，使用「当前操作」自动构图，或「仅看当前器材」排除遮挡；支持俯视、调速、暂停、逐项回看、转膜夹层与光轴调整。「流程与笔记」回到对应参考节点，「回忆这一阶段」进入对应练习。场景和二维读出均为教学合成示意，不计入独立完成次数。使用方法、截图与验证边界见 [交互实验场景说明](docs/interactive-lab-scenes.md)。
 
-1. 在 Western Blot 总块点击「展开学习」，再展开「封闭与抗体孵育」。点节点查看操作、原因、检查点和来源。
+1. 切到「流程图」，在 Western Blot 总块点击「展开学习」，再展开「封闭与抗体孵育」。点节点查看操作、原因、检查点和来源。
 2. 进入「回忆训练」。补全隐藏名称，提交检查；默认只显示正确、有错误或暂无法判断。
 3. 按需请求宽泛提示、再具体一点、完整答案。二级提示只聚焦一处。帮助状态会跨同一参考版本的题型和换题保留。
 4. 在顺序重建中从连接点连线。整段重建从空白开始，不预留标准数量的节点。配图可拖动，或先点图片再点目标流程块；一张卡可多次使用。
@@ -76,7 +76,7 @@ MCP 使用 `.labflow/control-token` 的本机控制令牌，启动时轮换；�
 
 网页右上角「模型设置」可选择模型，保存到 `.labflow/agent-settings.json`。HTTP 兼容模式使用 `LABFLOW_AI_BACKEND=openai-compatible`、`LABFLOW_API_BASE_URL`、`LABFLOW_MODEL`、可选 `LABFLOW_API_KEY` 与 `LABFLOW_API_STYLE`。支持 Chat Completions / Responses，详见 [接入说明](docs/ai-backends.md)。密钥仅由本机环境变量读取，不写入网页或分享包；`CODEX_BIN` 不能填写 API URL。
 
-升级沿用原 `.labflow` 目录即可；首次升级会保存 `state.before-v0.2.json`，补充新案例内容，保留已有用户修订、笔记、图片与旧题参考快照。旧题继续使用原参考版本，创建新题后才使用新版。详细变更见 [0.2.1 修复说明](docs/release-0.2.1.md)与 [0.2.0 迭代说明](docs/release-0.2.0.md)。
+升级沿用原 `.labflow` 目录即可；首次升级会保存 `state.before-v0.2.json`，补充新案例内容，保留已有用户修订、笔记、图片与旧题参考快照。旧题继续使用原参考版本，创建新题后才使用新版。详细变更见 [0.3.0 场景优化说明](docs/release-0.3.0.md)、[0.2.1 修复说明](docs/release-0.2.1.md)与 [0.2.0 迭代说明](docs/release-0.2.0.md)。
 
 ## 验证
 
