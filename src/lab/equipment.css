@@ -1,0 +1,19 @@
+.equipment-guide{padding:14px 16px;margin:0 0 12px;background:#f0f3ed;border:1px solid #cbd6cc;border-radius:10px;color:#2f493e}
+.equipment-guide-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.equipment-guide-heading>div{display:flex;align-items:center;gap:7px;min-width:0}
+.equipment-guide-heading h3{font-size:13px;font-weight:600;margin:0}
+.equipment-guide-heading span{font-size:10px;font-weight:400;color:#62796a;margin-left:3px}
+.equipment-guide-heading>button{width:28px;height:28px;flex-shrink:0;padding:0;border:0;background:transparent;color:#4b6256}
+.equipment-guide-heading>button:hover{background:#dce7dc}
+.equipment-parts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 18px;margin:0}
+.equipment-parts>div{min-width:0;padding-left:9px;border-left:2px solid #94b3aa}
+.equipment-parts dt{font-size:11px;line-height:1.6;font-weight:600;color:#2e5146}
+.equipment-parts dd{margin:3px 0 0;font-size:11px;line-height:1.65;color:#52695c;overflow-wrap:anywhere}
+.equipment-look{display:flex;align-items:flex-start;gap:7px;margin:13px 0 0;font-size:11px;line-height:1.7;color:#516d63}
+.equipment-look svg{flex-shrink:0;margin-top:3px}
+.equipment-related{display:flex;align-items:flex-start;gap:12px;padding-top:12px;margin-top:12px;border-top:1px solid #d5ded4}
+.equipment-related>span{font-size:10px;line-height:28px;white-space:nowrap;color:#647b6c}
+.equipment-related .station-step-links{min-width:0;gap:5px}
+.equipment-related .station-step-links button{padding:5px 8px;font-size:10px;text-align:left;line-height:1.6}
+.equipment-related .station-step-links>span{font-size:11px;line-height:1.8}
+@media(max-width:520px){.equipment-guide{padding:13px}.equipment-parts{gap:10px 12px}.equipment-guide-heading span{font-size:9px}.equipment-related{display:block}.equipment-related>span{display:block;line-height:1.4;margin-bottom:7px}}

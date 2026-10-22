@@ -1,5 +1,7 @@
 # 交互实验场景
 
+> 2026-10-23：在 0.3.0 基础上进一步细化仪器结构、材质和近景识别，见 [实验器材细化](instrument-detail-2026-10.md)。
+
 > 当前版本为 0.3.0。新增阶段导航、独立器材视图、调速与任意回看、按需渲染；见 [本轮变化](release-0.3.0.md)、[当前 QA](qa-0.3.0.md) 和 [人工测试指南](manual-testing-0.3.0.md)。下方 2026-10-17 的验证表保留为初版历史记录。
 
 本次功能在 LabFlow 既有学习与 Replay 中加入可操作的三维实验台和二维结构示意，覆盖 Western Blot 的 19 步与联合傅里叶相关（JTC）的 8 步。流程图和回忆训练仍可从原入口使用。
@@ -29,7 +31,7 @@
 
 - [App.tsx](../src/App.tsx) 通过 `React.lazy` 加载场景；学习/Replay 的场景与流程图共用当前步骤选择。
 - [LabExperience.tsx](../src/lab/LabExperience.tsx) 管理操作导览与二维示意；[scene-state.ts](../src/lab/scene-state.ts) 隔离播放和输入输出状态，[scene-camera.ts](../src/lab/scene-camera.ts) 计算镜头构图；[scene-data.ts](../src/lab/scene-data.ts) 为既有步骤 ID 增补器材、动作与观察说明。
-- [LabScene.tsx](../src/lab/LabScene.tsx) 用 Three.js 程序化几何创建器材，用 Canvas 生成标签与信号纹理，使用 OrbitControls 旋转/缩放、射线拾取和透视/俯视/局部聚焦镜头。场景运行时不请求外部模型、图片、视频或 CDN 资产。
+- [LabScene.tsx](../src/lab/LabScene.tsx) 管理 Three.js 渲染、旋转/缩放、射线拾取和透视/俯视/局部镜头；[scene-wb.ts](../src/lab/scene-wb.ts) 与 [scene-optics.ts](../src/lab/scene-optics.ts) 创建器材，[scene-primitives.ts](../src/lab/scene-primitives.ts) 提供共用几何和 Canvas 纹理。场景运行时不请求外部模型、图片、视频或 CDN 资产。
 - [lab.css](../src/lab/lab.css) 将样式限定于场景区域及其工作区状态，包含窄屏布局、可见焦点和减少动态效果偏好。渲染器限制像素比，画布离屏或页面隐藏时跳过渲染；卸载时释放几何、纹理、材质与事件监听。
 - 案例标题、摘要、原因、检查点与来源仍读取现有 `seedCases` 及当前参考版本。新增场景说明不替换原始参考，不写入评分规则。步骤覆盖应随 `lab.sequence` 与步骤 ID 一并维护。
 

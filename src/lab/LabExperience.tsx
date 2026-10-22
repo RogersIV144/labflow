@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Eye
 import type { LabCase } from '../../shared/types';
 import { lessonForStep, lessons, practiceScope, scenePhases, stationNames, type Station } from './scene-data';
 import { initialAdjustments, opticalSignals, playbackReducer } from './scene-state';
+import { equipmentDetails } from './scene-equipment';
 import type { SceneHandle } from './LabScene';
 const LabScene = lazy(() => import('./LabScene').then(module => ({ default: module.LabScene })));
 
@@ -12,6 +13,7 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   render() { return this.state.failed ? <div className="scene-fallback" role="status"><strong>三维场景未能加载</strong><p>操作导览仍可使用。请刷新页面后重试。</p></div> : this.props.children; }
 }
 import './lab.css';
+import './equipment.css';
 
 interface Props {
   lab: LabCase; selected?: string; focused: boolean;
@@ -42,14 +44,19 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
   const scene = useRef<SceneHandle>(null);
   const root = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
+  const stationButtons = useRef<Partial<Record<Station, HTMLButtonElement | null>>>({});
   const stationSteps = inspected ? lab.sequence.filter(key => lessons[key]?.station === inspected || inspected === 'fourier' && ['jtc-spectrum', 'jtc-read'].includes(key)) : [];
   const stations: Station[] = optical ? ['laser', 'iris', 'filter', 'lens', 'input', 'fourier', 'camera'] : [...new Set(lab.sequence.map(key => lessons[key].station))];
   const signals = opticalSignals(id, action);
   const select = (next: string) => { dispatch({ type: 'pause' }); onSelect(next); };
-  const focus = (station?: Station) => { scene.current?.focus(station); setView('focus'); };
+  const focus = (station?: Station) => { if (!station) setInspected(undefined); scene.current?.focus(station); setView('focus'); };
   const reset = () => { dispatch({ type: 'reset' }); setAdjustments(initialAdjustments(id)); };
   const seek = (next: number) => { dispatch({ type: 'seek', action: next, total: lesson.actions.length }); };
   const inspect = (station: Station) => { setInspected(station); focus(station); };
+  const closeInspection = () => {
+    setInspected(undefined);
+    if (inspected) stationButtons.current[inspected]?.focus({ preventScroll: true });
+  };
 
   useEffect(() => {
     dispatch({ type: 'select', stepId: id });
@@ -75,7 +82,7 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
   }, [id, action]);
 
   return <div ref={root} className={`lab-experience ${optical ? 'optical' : 'biological'} ${focused ? 'lab-enlarged' : ''}`} onKeyDown={event => {
-    if (event.key === 'Escape') { setInspected(undefined); onFocus(false); }
+    if (event.key === 'Escape') { closeInspection(); onFocus(false); }
   }}>
     <header className="lab-intro">
       <div><span className="lab-kicker">{optical ? 'OPTICAL LAB' : 'MOLECULAR LAB'} / 交互实验室</span><h2>{optical ? '沿着光路，理解两次测量。' : '把每一步，放回实验台。'}</h2></div>
@@ -85,14 +92,19 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
     <div className="lab-body">
       <div className="lab-visual-column">
         <section className="lab-stage" aria-label={optical ? 'JTC 三维光学实验台' : 'Western Blot 三维实验台'}>
-          <div className="stage-header"><div className="stage-title"><span className="live-dot"/><strong>{stationNames[lesson.station]}</strong><span>教学模型</span></div><div className="stage-tools"><button className="scene-isolate" aria-pressed={isolated} onClick={() => { setIsolated(value => !value); focus(inspected); }}><Eye size={14}/>{isolated ? '显示全部器材' : '仅看当前器材'}</button><button className="scene-expand" aria-label={focused ? '退出场景专注' : '放大实验场景'} aria-pressed={focused} onClick={() => onFocus(!focused)}>{focused ? <Minimize2 size={17}/> : <Maximize2 size={17}/>}</button></div></div>
+          <div className="stage-header"><div className="stage-title"><span className="live-dot"/><strong>{stationNames[inspected || lesson.station]}</strong><span>教学模型</span></div><div className="stage-tools"><button className="scene-isolate" aria-pressed={isolated} onClick={() => { setIsolated(value => !value); focus(inspected); }}><Eye size={14}/>{isolated ? '显示全部器材' : '仅看当前器材'}</button><button className="scene-expand" aria-label={focused ? '退出场景专注' : '放大实验场景'} aria-pressed={focused} onClick={() => onFocus(!focused)}>{focused ? <Minimize2 size={17}/> : <Maximize2 size={17}/>}</button></div></div>
           <SceneBoundary><Suspense fallback={<div className="scene-fallback">正在加载三维器材…</div>}><LabScene ref={scene} caseId={lab.id} stepId={id} station={lesson.station} action={action} total={lesson.actions.length} isolated={isolated} running={playing} exploded={exploded} exposure={exposure} alignment={alignment} onInspect={inspect} onViewChange={setView}/></Suspense></SceneBoundary>
           <div className="stage-view-controls" aria-label="场景镜头"><button aria-pressed={view === 'perspective'} onClick={() => { setIsolated(false); scene.current?.reset(); setView('perspective'); }}><RotateCcw size={14}/> 全景</button><button aria-pressed={view === 'focus'} onClick={() => { setInspected(undefined); focus(); }}><Focus size={14}/> 当前操作</button><button aria-pressed={view === 'top'} onClick={() => { scene.current?.view('top'); setView('top'); }}><ScanLine size={14}/> 俯视</button></div>
           <span className="stage-caption">{optical ? 'JTC' : 'WB'} · {String(index + 1).padStart(2, '0')} / {lab.sequence.length}</span>
           <span className="stage-gesture"><Hand size={13}/> 拖动旋转 · 滚轮缩放</span>
-          {inspected && <section className="station-popover" aria-label="器材说明"><div><Eye size={16}/><strong>{stationNames[inspected]}</strong><button aria-label="关闭器材说明" onClick={() => setInspected(undefined)}><X size={15}/></button></div><p>选择相关步骤，观察它在流程中的作用。</p><div className="station-step-links">{stationSteps.map(key => <button key={key} aria-current={key === id ? 'step' : undefined} onClick={() => { select(key); setInspected(undefined); }}>{lab.sequence.indexOf(key) + 1}. {lab.steps.find(item => item.id === key)?.title}</button>)}{!stationSteps.length && <span>配合光轴基准步骤观察光源与光路。</span>}</div></section>}
         </section>
-        <div className="scene-stations" aria-label="浏览实验器材">{stations.map(station => <button key={station} aria-pressed={(inspected || lesson.station) === station} onClick={() => inspect(station)}>{stationNames[station]}</button>)}</div>
+        <div className="scene-stations" aria-label="浏览实验器材">{stations.map(station => <button key={station} ref={button => { stationButtons.current[station] = button; }} aria-pressed={(inspected || lesson.station) === station} aria-expanded={inspected === station} aria-controls={inspected === station ? 'equipment-guide' : undefined} onClick={() => inspect(station)}>{stationNames[station]}</button>)}</div>
+        {inspected && <section id="equipment-guide" className="equipment-guide" aria-label="器材说明">
+          <header className="equipment-guide-heading"><div><Eye size={15}/><h3>{stationNames[inspected]}</h3><span>观察部件</span></div><button aria-label="关闭器材说明" onClick={closeInspection}><X size={16}/></button></header>
+          <dl className="equipment-parts">{equipmentDetails[inspected].parts.map(part => <div key={part.name}><dt>{part.name}</dt><dd>{part.description}</dd></div>)}</dl>
+          <p className="equipment-look"><Focus size={13}/>{equipmentDetails[inspected].look}</p>
+          <div className="equipment-related"><span>相关步骤</span><div className="station-step-links">{stationSteps.map(key => <button key={key} aria-current={key === id ? 'step' : undefined} onClick={() => { select(key); setInspected(undefined); }}>{lab.sequence.indexOf(key) + 1}. {lab.steps.find(item => item.id === key)?.title}</button>)}{!stationSteps.length && <span>配合光轴基准步骤观察光源与光路。</span>}</div></div>
+        </section>}
         <div className="lab-playback" aria-label="演示控制">
           <button className="lab-play" aria-label={playing ? '暂停操作演示' : '播放操作演示'} onClick={() => { if (!playing) focus(); dispatch({ type: 'toggle', total: lesson.actions.length }); }}>{playing ? <Pause size={19}/> : <Play size={19} fill="currentColor"/>}</button>
           <div className="playback-label" aria-live="polite"><strong>{playing ? '正在演示' : action === lesson.actions.length ? '演示结束，可逐项回看' : action ? '已暂停 · 可自由观察' : '准备就绪'}</strong><span>{action ? lesson.actions[action - 1] : '播放本步，或选择右侧任一操作'}</span></div>
