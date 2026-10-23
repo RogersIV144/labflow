@@ -160,3 +160,19 @@
   .lab-scene-mode .workspace-heading .version{margin:0;align-self:center}
   .lab-stage{height:clamp(230px,calc(100dvh - 505px),560px)}
 }
+
+/* ───────── OPTILAB 子应用（JTC 真实仿真）───────── */
+/* 这套仿真自带完整界面，实验台要给它足够高度，否则三栏一挤就只剩画布 */
+.optical .lab-stage{height:clamp(440px,calc(100dvh - 340px),760px)}
+.optical .stage-tools a.scene-isolate{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.optical.lab-enlarged .lab-stage{height:calc(100dvh - 260px)}
+.optical .stage-caption,.optical .stage-gesture{display:none}
+.optilab-host{position:absolute;inset:50px 0 0;background:#03050a}
+.optilab-frame{display:block;width:100%;height:100%;border:0;background:#03050a}
+.optilab-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:9px;padding:24px;text-align:center;font-size:12px;line-height:1.9;color:#dfe9e0;background:#0a1119f2}
+.optilab-overlay.failed{color:#ffe0d8}
+.optilab-overlay .spin{animation:optilab-spin 1.1s linear infinite}
+@keyframes optilab-spin{to{transform:rotate(360deg)}}
+.optilab-note p{margin-top:10px}
+.optilab-note-hint{color:#7a8f6d!important;font-size:10.5px!important}
+@media(max-width:760px){.optical .lab-stage{height:min(74vh,560px)}.optical.lab-enlarged .lab-stage{height:74vh}}
