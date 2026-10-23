@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { palette, material, box, cylinder, station, label, tube, bottle, signalTexture, screen, bench, type Model } from './scene-primitives';
+import type { HandsOnEvent } from './interaction-state';
 
 // Generic instruments informed by manufacturer construction diagrams; no device
 // dimensions, numeric operating conditions, or measured outputs are implied.
@@ -48,10 +49,12 @@ function movingLead(parent: THREE.Object3D, points: number[][], color: number) {
   const mesh = new THREE.Mesh(geometry, material(color)); parent.add(mesh);
   const positions = geometry.getAttribute('position'), normals = geometry.getAttribute('normal');
   const center = new THREE.Vector3(), normal = new THREE.Vector3();
-  const originalBendY = points[1][1]; let previousY = points[0][1];
-  return (y: number) => {
-    if (Math.abs(y - previousY) < .001) return;
-    previousY = y; path.points[0].y = y; path.points[1].y = Math.max(originalBendY, y + .09); path.updateArcLengths();
+  const originalBendY = points[1][1], originalX = points[0][0], originalZ = points[0][2];
+  let previousY = points[0][1], previousX = originalX, previousZ = originalZ;
+  return (y: number, x = originalX, z = originalZ) => {
+    if (Math.abs(y - previousY) + Math.abs(x - previousX) + Math.abs(z - previousZ) < .001) return;
+    previousY = y; previousX = x; previousZ = z;
+    path.points[0].set(x, y, z); path.points[1].set(points[1][0] + (x - originalX) * .65, Math.max(originalBendY, y + .09), points[1][2] + (z - originalZ) * .5); path.updateArcLengths();
     const frames = path.computeFrenetFrames(24, false);
     for (let i = 0; i <= 24; i++) {
       path.getPointAt(i / 24, center);
@@ -68,6 +71,35 @@ function movingLead(parent: THREE.Object3D, points: number[][], color: number) {
 function frontStatus(parent: THREE.Object3D, text: string, x: number, y: number, z: number, width: number) {
   box(parent, width + .08, width * .23, .035, x, y, z - .01, graphite, .018);
   return label(parent, text, x, y, z + .014, width, '#b8e3d0', '#16282b');
+}
+function interaction(object: THREE.Object3D, event: HandsOnEvent, text: string) {
+  object.userData.interaction = event; object.userData.interactionLabel = text;
+}
+function displayText(mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>, text: string) {
+  if (mesh.userData.displayText === text) return;
+  mesh.userData.displayText = text;
+  const texture = mesh.material.map as THREE.CanvasTexture, canvas = texture.image as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#16282b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#b8e3d0'; ctx.font = '500 35px "Segoe UI", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width - 22);
+  texture.needsUpdate = true;
+}
+// These bands are linked to the virtual load, not a measured protein signal.
+function loadedBlot(lanes: number[], exposure: number) {
+  const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 210;
+  const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#dce1df'; ctx.fillRect(0, 0, 320, 210);
+  ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+  lanes.forEach((amount, i) => {
+    const x = 44 + i * 77;
+    ctx.fillStyle = '#4b605d'; ctx.fillText(`${i + 1} · ${amount} µL`, x, 21);
+    [65, 112, 158].forEach((y, row) => {
+      if (!amount) return;
+      const intensity = Math.min(.97, amount / 30 * exposure / 65 * [1, .78, .58][row]);
+      ctx.fillStyle = `rgba(29,43,47,${intensity})`; ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = exposure > 75 ? 5 : 2;
+      ctx.fillRect(x - 22, y, 44, exposure > 75 ? 8 : 5); ctx.shadowBlur = 0;
+    });
+  });
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
 }
 
 export function buildWB(): Model {
@@ -91,20 +123,26 @@ export function buildWB(): Model {
   repeat(iceBox, new THREE.CylinderGeometry(.078, .078, .013, 20), graphite, tubePositions);
   const tubes = tubePositions.slice(0, 6).map(([x, y, z], i) => { const t = tube(iceBox, x, y - .2, z, i % 2 ? 0xc5aa61 : 0x5e96ad); t.group.scale.setScalar(.83); return t; });
   label(iceBox, 'SAMPLE RACK', 0, .14, .505, .8, '#edf4eb', '#3a616b');
-  const pipette = new THREE.Group(); sample.add(pipette); pipette.position.set(-.58, 1.6, .17);
+  const pipette = new THREE.Group(); pipette.name = 'wb-pipette'; sample.add(pipette); pipette.position.set(-.58, 1.6, .17);
   const grip = cylinder(pipette, .092, .62, 0, .15, 0, 0xe9eae1, .067); grip.material.metalness = .02; grip.material.roughness = .44;
   cylinder(pipette, .062, .21, 0, .55, 0, graphite);
   const plunger = cylinder(pipette, .105, .06, 0, .69, 0, 0x4b8eaa);
   box(pipette, .19, .07, .12, .065, .39, 0, 0xe9eae1, .025);
   cylinder(pipette, .027, .42, .087, -.1, 0, steel); // Tip-ejector rod.
   cylinder(pipette, .049, .19, 0, -.28, 0, graphite, .038); cylinder(pipette, .031, .27, 0, -.5, 0, 0xa7bbc1, .018);
-  glass(cylinder(pipette, .035, .32, 0, -.77, 0, 0xc9e8e8, .006), .48);
-  box(pipette, .08, .15, .02, 0, .16, .081, graphite, .009); label(pipette, 'µL', 0, .17, .094, .065, '#dae4d5', '#1b2d32');
+  const disposableTip = glass(cylinder(pipette, .035, .32, 0, -.77, 0, 0xc9e8e8, .006), .48);
+  const tipLiquid = cylinder(pipette, .018, .23, 0, -.78, 0, 0x327c9e, .004); tipLiquid.visible = false;
+  box(pipette, .08, .15, .02, 0, .16, .081, graphite, .009); const volumeDisplay = label(pipette, 'µL', 0, .17, .094, .065, '#dae4d5', '#1b2d32');
   const liquidDrop = new THREE.Mesh(new THREE.SphereGeometry(.018, 12, 10), material(0x6eafb5, .05, .2)); liquidDrop.position.set(0, -.94, 0); pipette.add(liquidDrop);
   const tipBox = new THREE.Group(); tipBox.position.set(-1.52, .04, -.42); tipBox.scale.setScalar(.64); sample.add(tipBox);
   box(tipBox, .64, .27, .75, 0, .15, 0, 0xd1caa9, .025); box(tipBox, .6, .045, .7, 0, .3, 0, 0xd8b75b);
   repeat(tipBox, new THREE.CylinderGeometry(.027, .011, .11, 12), 0xdce4d9, Array.from({ length: 30 }, (_, i) => [-.23 + (i % 5) * .115, .355, -.29 + Math.floor(i / 5) * .115]));
   glass(box(tipBox, .65, .04, .74, 0, .71, -.22, 0xc8dce0), .25).rotation.x = -.95;
+  interaction(tipBox, { type: 'wb-tip' }, '装上新吸头');
+  interaction(tubes[3].group, { type: 'wb-aspirate' }, '从样品管吸液');
+  const sourceBadge = label(sample, 'SOURCE / 200 µL', -.58, .87, .39, .75, '#b8e3d0', '#16282b');
+  interaction(sourceBadge, { type: 'wb-aspirate' }, '从样品管吸液'); sourceBadge.visible = false;
+  const tipBadge = label(tipBox, 'NEW TIP', 0, .47, .39, .68, '#b8e3d0', '#16282b'); tipBadge.visible = false;
   const heatBlock = new THREE.Group(); heatBlock.position.set(.78, 0, -.3); sample.add(heatBlock);
   feet(heatBlock, .7, .65); box(heatBlock, 1.01, .4, .94, 0, .28, 0, 0xe2e4de, .06);
   const aluminum = box(heatBlock, .79, .16, .6, 0, .56, -.09, steel, .015); aluminum.material.metalness = .72; aluminum.material.roughness = .31;
@@ -118,6 +156,8 @@ export function buildWB(): Model {
   const wellLiquid = repeat(plate, new THREE.CylinderGeometry(.023, .023, .015, 10), 0xa2b5c0, Array.from({ length: 96 }, (_, i) => [-.43 + (i % 12) * .078, .093, -.245 + Math.floor(i / 12) * .07]));
   label(plate, 'A–H / 1–12', 0, .04, .329, .68, '#536b70', '#e5e9e0');
   sample.userData.inspectionBounds = new THREE.Box3(new THREE.Vector3(-1.78, 0, -.9), new THREE.Vector3(1.4, 2.48, 1));
+  const demoSampleBounds = sample.userData.inspectionBounds;
+  const manualSampleBounds = new THREE.Box3(new THREE.Vector3(-1.78, 0, -.9), new THREE.Vector3(1.4, 3.35, 1));
 
   const centrifuge = stations.centrifuge = station(root, 'centrifuge', -2.25, -1.03);
   feet(centrifuge, 1.5, 1.25); box(centrifuge, 1.98, .63, 1.75, 0, .42, 0, 0xe4e7df, .12);
@@ -162,24 +202,45 @@ export function buildWB(): Model {
   for (const z of [-.23, .22]) glass(box(gel, 1.04, 1.03, .035, 0, .79, z, 0xd2e6dc), .27);
   glass(box(gel, .97, .91, .035, 0, .78, .19, 0xa8ccd1), .45);
   for (const x of [-.5, .5]) box(gel, .028, 1.04, .06, x, .8, .21, 0xd9e8db, .004);
-  const bands: THREE.Mesh[] = [];
+  const bands: THREE.Mesh[] = [], demoWells: THREE.Mesh[] = [];
   for (let i = 0; i < 8; i++) {
-    box(gel, .075, .065, .012, -.407 + i * .116, 1.235, .242, 0x426574, .004);
+    demoWells.push(box(gel, .075, .065, .012, -.407 + i * .116, 1.235, .242, 0x426574, .004));
     for (let j = 0; j < 3; j++) bands.push(box(gel, .072, .018, .008, -.407 + i * .116, 1.15 - j * .11, .248, [0x225489, 0x5a83a3, 0x7c6c87][j], .004));
   }
-  const gelLid = new THREE.Group(); gel.add(gelLid); gelLid.position.y = 1.4;
+  const gelGlass = gel.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh && !Array.isArray(child.material) && child.material.transparent);
+  const manualGel = new THREE.Group(); gel.add(manualGel); manualGel.visible = false;
+  const laneXs = [-.348, -.116, .116, .348];
+  const laneFills: THREE.Mesh[] = [], laneMarkers: THREE.Mesh[] = [], loadedBands: THREE.Mesh[] = [];
+  laneXs.forEach((x, lane) => {
+    const well = new THREE.Group(); manualGel.add(well); interaction(well, { type: 'wb-dispense', lane }, `向泳道 ${lane + 1} 加样`);
+    box(well, .18, .08, .045, x, 1.23, .24, 0x314d59, .005);
+    const fill = box(well, .14, .06, .009, x, 1.23, .267, 0x398da9, .003); laneFills.push(fill);
+    const marker = box(well, .185, .17, .055, x, 1.51, .33, 0x425e63, .023); laneMarkers.push(marker);
+    label(well, `${lane + 1}`, x, 1.51, .36, .17, '#e1f3e8', '#25414a').scale.y = 4;
+    // An invisible target slightly enlarges the small real well for touch/pointer use.
+    const target = box(well, .21, .3, .12, x, 1.4, .28, 0x72c8b5, .02); target.material.transparent = true; target.material.opacity = 0; target.material.depthWrite = false; target.castShadow = false;
+    for (let row = 0; row < 3; row++) {
+      const band = box(manualGel, .14, .022, .009, x, 1.21, .275, [0x24588b, 0x44779d, 0x716185][row], .004);
+      band.material.transparent = true; loadedBands.push(band);
+    }
+  });
+  const gelLid = new THREE.Group(); gelLid.name = 'wb-gel-cover'; gel.add(gelLid); gelLid.position.y = 1.4;
   glass(box(gelLid, 1.62, .085, 1.2, 0, 0, 0, 0xb1cbd0), .32); box(gelLid, .54, .08, .16, 0, .08, -.22, 0x326c73, .025);
   terminal(gelLid, -.54, .09, -.35, graphite); terminal(gelLid, .54, .09, -.35, red);
+  interaction(gelLid, { type: 'wb-lid' }, '打开或合上电泳槽盖');
   label(gel, 'VERTICAL ELECTROPHORESIS', 0, .092, .641, 1.38, '#d3e2dc', '#33616b');
   const comb = new THREE.Group(); comb.position.set(-.1, .12, .77); comb.rotation.x = Math.PI / 2; comb.rotation.z = .1; gel.add(comb);
   box(comb, .98, .07, .055, 0, 0, 0, 0x659f8c, .009); repeat(comb, new THREE.BoxGeometry(.07, .17, .05), 0x659f8c, Array.from({ length: 8 }, (_, i) => [-.407 + i * .116, -.1, 0]));
   const power = new THREE.Group(); power.position.set(-.03, 0, -1.75); gel.add(power);
   feet(power, .95, .65); box(power, 1.33, .48, .94, 0, .33, 0, 0xe6e9e2, .055); box(power, 1.15, .31, .025, 0, .34, .482, 0x36595d, .02);
-  frontStatus(power, 'DC OUTPUT', -.21, .4, .502, .57); dial(power, .39, .39, .512, .07); label(power, 'POWER SUPPLY', 0, .18, .503, .9, '#e0e7dc', '#36595d');
+  const powerDisplay = frontStatus(power, 'DC OUTPUT', -.21, .4, .502, .57); dial(power, .39, .39, .512, .07); label(power, 'POWER SUPPLY', 0, .18, .503, .9, '#e0e7dc', '#36595d');
+  interaction(power, { type: 'wb-run' }, '开始或暂停电泳');
   terminal(power, -.43, .61, -.12, graphite); terminal(power, .43, .61, -.12, red);
   const gelRedLead = movingLead(gel, [[.54, 1.57, -.35], [.88, 1.66, -.75], [.76, .79, -1.6], [.4, .72, -1.87]], red);
   const gelBlackLead = movingLead(gel, [[-.54, 1.57, -.35], [-.85, 1.59, -.82], [-.78, .72, -1.65], [-.46, .72, -1.87]], graphite);
   gel.userData.inspectionBounds = new THREE.Box3(new THREE.Vector3(-1, 0, -2.25), new THREE.Vector3(1, 2.1, .95)); gel.userData.viewDirection = [2.5, 3, 6];
+  const demoGelBounds = gel.userData.inspectionBounds;
+  const manualGelBounds = new THREE.Box3(new THREE.Vector3(-1.3, 0, -2.25), new THREE.Vector3(2.8, 3.35, .95));
 
   const transfer = stations.transfer = station(root, 'transfer', 2.08, -.92);
   box(transfer, 1.7, .14, 1.34, .08, .09, 0, 0x4a727c, .025);
@@ -222,11 +283,15 @@ export function buildWB(): Model {
   glass(box(wetting, .52, .02, .85, 0, .09, 0, 0xb1d1ca), .34); box(wetting, .36, .012, .55, 0, .08, 0, 0xeeecdf, .006);
   const forceps = new THREE.Group(); forceps.position.set(-1.12, .19, .55); forceps.rotation.y = -.3; transfer.add(forceps); for (const x of [-.025, .025]) box(forceps, .025, .02, .45, x, 0, 0, steel, .004);
   const transferBands = new THREE.Group(); layers[4].add(transferBands); for (let i = 0; i < 5; i++) box(transferBands, .1, .022, .006, -.34 + i * .17, -.08 + (i % 2) * .13, .015, 0x50778a, .004);
+  const loadedMembrane = new THREE.Group(); layers[4].add(loadedMembrane); loadedMembrane.visible = false;
+  const membraneBands: THREE.Mesh[] = [];
+  laneXs.forEach(x => { for (let row = 0; row < 3; row++) { const band = box(loadedMembrane, .14, .023, .006, x, .25 - row * .22, .016, 0x497787, .003); band.material.transparent = true; membraneBands.push(band); } });
+  interaction(transferPower, { type: 'wb-transfer' }, '把已分离的样品转移到膜上');
   const transferParticles = repeat(stack, new THREE.SphereGeometry(.014, 8, 8), 0x4b8198, Array.from({ length: 10 }, (_, i) => [-.34 + (i % 5) * .17, -.12 + Math.floor(i / 5) * .24, 0]));
   transfer.userData.inspectionBounds = new THREE.Box3(new THREE.Vector3(-1.5, 0, -1.15), new THREE.Vector3(2.1, 2.5, 1.15)); transfer.userData.viewDirection = [4, 2.7, 5.6];
 
   const tray = stations.tray = station(root, 'tray', 3.02, 1.3);
-  feet(tray, 1.25, .95); box(tray, 1.77, .26, 1.3, 0, .24, 0, 0xe3e5de, .055); frontStatus(tray, 'ROCKING PLATFORM', -.17, .24, .667, .95); dial(tray, .64, .25, .682, .09); cylinder(tray, .16, .24, 0, .45, 0, steel);
+  feet(tray, 1.25, .95); box(tray, 1.77, .26, 1.3, 0, .24, 0, 0xe3e5de, .055); const trayDisplay = frontStatus(tray, 'ROCKING PLATFORM', -.17, .24, .667, .95); dial(tray, .64, .25, .682, .09); cylinder(tray, .16, .24, 0, .45, 0, steel);
   const shaker = new THREE.Group(); shaker.position.y = .56; tray.add(shaker); box(shaker, 1.66, .08, 1.19, 0, 0, 0, graphite, .025);
   repeat(shaker, new THREE.BoxGeometry(1.45, .012, .025), 0x485756, Array.from({ length: 14 }, (_, i) => [0, .046, -.5 + i * .077]));
   const incubationTray = new THREE.Group(); incubationTray.position.y = .1; shaker.add(incubationTray); trayShell(incubationTray, 1.22, .83, 0xe5e9df, .17);
@@ -256,11 +321,103 @@ export function buildWB(): Model {
   const monitor = new THREE.Group(); monitor.position.set(.84, 1.65, .16); monitor.rotation.y = -.22; imager.add(monitor); cylinder(monitor, .045, .37, 0, .06, -.08, steel);
   box(imager, .3, .065, .13, .76, 1.59, .08, steel, .012);
   const image = screen(monitor, 0, .62, .015, 1.12, .79, 'empty'); box(monitor, 1.3, .08, .13, 0, .16, -.025, graphite, .02); label(monitor, 'SYNTHETIC PREVIEW', 0, .17, .056, .95, '#b7cac4', '#253638');
+  interaction(monitor, { type: 'wb-capture' }, '采集当前曝光下的条带图');
   cylinder(imager, .028, .018, .51, 1.91, .762, 0x79b09e).rotation.x = Math.PI / 2;
   imager.userData.inspectionBounds = new THREE.Box3(new THREE.Vector3(-.95, 0, -.85), new THREE.Vector3(1.55, 2.8, 2.25)); imager.userData.viewDirection = [3.4, 2.4, 6];
-  let lastImage = '', lastWellState = false;
+  let lastImage = '', lastWellState = false, wasManual = false, pipetteDestination = '';
+  let pipetteMove: 'lift' | 'translate' | 'lower' = 'lower';
+  let coverMove: 'lift' | 'translate' | 'lower' = 'lower', coverState: boolean | undefined;
   const scratchMatrix = new THREE.Matrix4();
+  const pipetteTarget = new THREE.Vector3();
   return { root, stations, update(props, time, dt) {
+    const hand = props.handsOn?.wb;
+    sourceBadge.visible = tipBadge.visible = manualGel.visible = Boolean(hand);
+    gel.userData.inspectionBounds = hand ? manualGelBounds : demoGelBounds;
+    sample.userData.inspectionBounds = hand ? manualSampleBounds : demoSampleBounds;
+    gelGlass.forEach(mesh => { mesh.userData.pickThrough = Boolean(hand); });
+    demoWells.forEach(well => { well.visible = !hand; }); bands.forEach(band => { band.visible = !hand; });
+    if (hand) {
+      if (!wasManual) {
+        (heatLed.material as THREE.MeshStandardMaterial).color.setHex(0x71a38b);
+        (centrifugeLed.material as THREE.MeshStandardMaterial).color.setHex(0x75a996);
+        for (let i = 0; i < 96; i++) wellLiquid.setColorAt(i, new THREE.Color(0xa2b5c0));
+        if (wellLiquid.instanceColor) wellLiquid.instanceColor.needsUpdate = true;
+        lastWellState = false; fluid.scale.y = 1;
+      }
+      // Manual state is independent of the selected lesson and demonstration clock.
+      // The pipette lifts clear before travelling horizontally or entering a well.
+      const source = hand.target === 'source', parked = !source && hand.lidClosed;
+      const parent = source ? sample : gel;
+      const destination = source ? 'source' : parked ? 'parked' : `lane-${hand.lane}`;
+      if (pipette.parent !== parent) { root.updateMatrixWorld(true); parent.attach(pipette); }
+      if (!wasManual || destination !== pipetteDestination) { pipetteDestination = destination; pipetteMove = 'lift'; }
+      wasManual = true;
+      pipetteTarget.set(source ? -.58 : parked ? -1.05 : laneXs[hand.lane], source ? hand.tip === 'none' ? 1.72 : 1.48 : parked ? 1.6 : 2.2, source ? .17 : parked ? .76 : .245);
+      tubes[3].cap.rotation.x = THREE.MathUtils.damp(tubes[3].cap.rotation.x, -1.9, 10, dt);
+      if (pipetteMove === 'lift') {
+        pipette.position.y = THREE.MathUtils.damp(pipette.position.y, 2.5, 16, dt);
+        if (pipette.position.y > 2.48) pipetteMove = 'translate';
+      } else if (pipetteMove === 'translate') {
+        pipette.position.x = THREE.MathUtils.damp(pipette.position.x, pipetteTarget.x, 16, dt);
+        pipette.position.z = THREE.MathUtils.damp(pipette.position.z, pipetteTarget.z, 16, dt);
+        if (Math.abs(pipette.position.x - pipetteTarget.x) + Math.abs(pipette.position.z - pipetteTarget.z) < .025) pipetteMove = 'lower';
+      } else if (source || parked || gelLid.position.x > 1.55) {
+        pipette.position.lerp(pipetteTarget, 1 - Math.exp(-dt * 12));
+      }
+      plunger.position.y = THREE.MathUtils.damp(plunger.position.y, hand.tip === 'used' ? .62 : .69, 9, dt);
+      disposableTip.visible = hand.tip !== 'none'; tipLiquid.visible = hand.held > 0;
+      tipLiquid.scale.y = Math.max(.001, hand.held / 30); tipLiquid.position.y = -.895 + .115 * hand.held / 30;
+      liquidDrop.visible = false;
+      tubes.forEach((t, i) => { const fill = i === 3 ? hand.source / 200 : 1; t.liquid.visible = fill > 0; t.liquid.scale.y = Math.max(.001, fill); t.liquid.position.y = .045 + .085 * fill; });
+      displayText(volumeDisplay, `${String(hand.volume).padStart(3, '0')} µL`);
+      displayText(sourceBadge, `SOURCE / ${hand.source} µL`);
+      // Only close the cover once the pipette has cleared the cassette.
+      const canClose = source || pipette.position.x < -.85;
+      const coverClosed = hand.lidClosed && canClose;
+      if (coverState !== coverClosed) { coverState = coverClosed; coverMove = 'lift'; }
+      if (coverMove === 'lift') {
+        gelLid.position.y = THREE.MathUtils.damp(gelLid.position.y, 3.12, 18, dt);
+        if (gelLid.position.y > 3.1) coverMove = 'translate';
+      } else if (coverMove === 'translate') {
+        gelLid.position.x = THREE.MathUtils.damp(gelLid.position.x, coverClosed ? 0 : 1.9, 18, dt);
+        if (Math.abs(gelLid.position.x - (coverClosed ? 0 : 1.9)) < .02) { gelLid.position.x = coverClosed ? 0 : 1.9; coverMove = 'lower'; }
+      } else gelLid.position.y = THREE.MathUtils.damp(gelLid.position.y, coverClosed ? 1.4 : .26, 16, dt);
+      gelLid.position.z = THREE.MathUtils.damp(gelLid.position.z, coverClosed ? 0 : .03, 12, dt);
+      gelRedLead(gelLid.position.y + .17, gelLid.position.x + .54, gelLid.position.z - .35);
+      gelBlackLead(gelLid.position.y + .17, gelLid.position.x - .54, gelLid.position.z - .35);
+      laneFills.forEach((fill, lane) => { fill.visible = hand.lanes[lane] > 0 && hand.progress < .15; fill.scale.y = Math.max(.001, hand.lanes[lane] / 30); });
+      laneMarkers.forEach((marker, lane) => { const mat = marker.material as THREE.MeshStandardMaterial; mat.color.setHex(lane === hand.lane ? 0xd3ad58 : 0x425e63); mat.emissive.setHex(lane === hand.lane ? 0x51380a : 0x000000); mat.emissiveIntensity = .25; });
+      loadedBands.forEach((band, i) => { const lane = Math.floor(i / 3), row = i % 3; band.visible = hand.lanes[lane] > 0; band.position.y = 1.21 - hand.progress * (.25 + row * .23); (band.material as THREE.MeshStandardMaterial).opacity = .22 + .78 * hand.lanes[lane] / 30; });
+      displayText(powerDisplay, hand.running ? `RUN / ${Math.round(hand.progress * 100)}%` : hand.progress === 1 ? 'COMPLETE' : hand.progress > 0 ? 'PAUSED' : hand.lidClosed ? 'READY' : 'LID OPEN');
+      const expanded = props.station === 'transfer' && props.exploded && !hand.transferred;
+      layers.forEach((layer, i) => { layer.position.z = THREE.MathUtils.damp(layer.position.z, (i - 3.5) * (expanded ? .24 : .06), 5, dt); stackLabels[i].visible = expanded; });
+      stack.position.y = THREE.MathUtils.damp(stack.position.y, expanded ? 1.3 : .87, 5, dt);
+      transferLid.position.y = THREE.MathUtils.damp(transferLid.position.y, expanded ? 2.16 : 1.55, 5, dt); transferTank.visible = !expanded;
+      transferRedLead(transferLid.position.y + .17); transferBlackLead(transferLid.position.y + .17);
+      transferBands.visible = transferParticles.visible = false; loadedMembrane.visible = hand.transferred;
+      membraneBands.forEach((band, i) => { band.visible = hand.lanes[Math.floor(i / 3)] > 0; (band.material as THREE.MeshStandardMaterial).opacity = .2 + .8 * hand.lanes[Math.floor(i / 3)] / 30; });
+      (layerSurfaces[3].material as THREE.MeshStandardMaterial).color.setHex(hand.transferred ? 0xc4dace : 0xf0efdf);
+      // Unrelated equipment stays idle; changing lessons never fabricates samples.
+      lid.rotation.x = THREE.MathUtils.damp(lid.rotation.x, -1.25, 6, dt); rotorCover.visible = separated.visible = false;
+      warmTubes.forEach(t => { t.group.visible = false; }); shaker.rotation.z = 0; fluid.visible = hand.transferred;
+      antibodies.visible = secondaryMarkers.visible = hand.detected;
+      antibodies.position.y = THREE.MathUtils.damp(antibodies.position.y, hand.detected ? .1 : .19, 8, dt); wash.visible = false;
+      displayText(trayDisplay, hand.detected ? 'BOUND / SCHEMATIC' : 'ROCKING PLATFORM');
+      const loadingImage = !hand.captured;
+      const doorTarget = loadingImage || imageTray.position.z > .07 ? -1.65 : 0;
+      door.rotation.y = THREE.MathUtils.damp(door.rotation.y, doorTarget, 8, dt);
+      imageTray.position.z = THREE.MathUtils.damp(imageTray.position.z, loadingImage && door.rotation.y < -1.59 ? .62 : .03, 8, dt);
+      const preview = hand.captured ? `loaded-${hand.lanes.join(',')}-${hand.exposure}` : 'empty';
+      if (preview !== lastImage) { image.material.map?.dispose(); image.material.map = hand.captured ? loadedBlot(hand.lanes, hand.exposure) : signalTexture('empty'); image.material.needsUpdate = true; lastImage = preview; }
+      return;
+    }
+    if (wasManual) {
+      sample.add(pipette); pipette.position.set(-.58, 1.72, .17); gelLid.position.set(0, 1.4, 0);
+      tubes.forEach(t => { t.liquid.visible = true; t.liquid.position.y = .13; });
+      disposableTip.visible = true; tipLiquid.visible = false; loadedMembrane.visible = false;
+      displayText(volumeDisplay, 'µL'); displayText(powerDisplay, 'DC OUTPUT'); displayText(trayDisplay, 'ROCKING PLATFORM');
+      wasManual = false; pipetteDestination = ''; coverState = undefined;
+    }
     const fraction = props.action / Math.max(1, props.total), pipetting = props.stepId === 'wb-lysis' && props.action >= 2;
     const targetTube = tubes[3], openTube = props.stepId === 'wb-lysis' && props.action >= 1;
     // The cap opens before the tip descends, and stays clear until the tip leaves.

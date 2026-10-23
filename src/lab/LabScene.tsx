@@ -10,6 +10,7 @@ export interface SceneHandle { focus: (station?: Station) => void; reset: () => 
 import { material, type SceneProps as Props } from './scene-primitives';
 import { buildWB } from './scene-wb';
 import { buildOptics } from './scene-optics';
+import type { HandsOnEvent } from './interaction-state';
 
 export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, ref) {
   const host = useRef<HTMLDivElement>(null);
@@ -18,9 +19,10 @@ export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, 
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [hovered, setHovered] = useState('');
   useImperativeHandle(ref, () => ({ focus: station => runtime.current?.focus(station), reset: () => runtime.current?.reset(), view: view => runtime.current?.view(view) }), []);
   useEffect(() => { runtime.current?.stepChanged(); }, [props.stepId]);
-  useEffect(() => { runtime.current?.invalidate(); }, [props.action, props.running, props.exploded, props.exposure, props.alignment, props.station, props.isolated]);
+  useEffect(() => { runtime.current?.invalidate(); setHovered(''); }, [props.action, props.running, props.exploded, props.exposure, props.alignment, props.station, props.isolated, props.handsOn]);
 
   useEffect(() => {
     const container = host.current!;
@@ -63,6 +65,7 @@ export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, 
     let focusedStation = current.current.station;
     let targetCamera: THREE.Vector3 | null = null, targetLook: THREE.Vector3 | null = null;
     let frame = 0, disposed = false, lost = false, visible = true, previous = performance.now(), elapsed = 0, settleUntil = 0;
+    let previousHandsOn: boolean | undefined;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const request = () => { if (!disposed && !lost && visible && !document.hidden && !frame) frame = requestAnimationFrame(animate); };
     const invalidate = () => { settleUntil = performance.now() + 1800; renderer.shadowMap.needsUpdate = true; request(); };
@@ -98,33 +101,74 @@ export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, 
       // Hidden animation props must not intercept clicks on visible instruments.
       for (const item of raycaster.intersectObject(model.root, true)) {
         let object: THREE.Object3D | null = item.object, stationId: Station | undefined, shown = true, pickThrough = false;
-        while (object) { if (!object.visible) shown = false; if (object.userData.station) stationId = object.userData.station; if (object.userData.pickThrough) pickThrough = true; object = object.parent; }
+        let interaction: HandsOnEvent | undefined, control: 'offsetX' | 'offsetY' | 'focus' | undefined, label = '';
+        while (object) {
+          if (!object.visible) shown = false;
+          if (object.userData.station) stationId = object.userData.station;
+          if (object.userData.pickThrough) pickThrough = true;
+          interaction ||= object.userData.interaction;
+          control ||= object.userData.control;
+          label ||= object.userData.interactionLabel || '';
+          object = object.parent;
+        }
         if (!shown || pickThrough) continue;
-        return stationId; // Do not pick through the bench or a foreground object.
+        return { station: stationId, interaction, control, label };
       }
       return undefined;
     };
     let down: { x: number; y: number; id: number } | undefined;
-    const pointerDown = (event: PointerEvent) => { down = { x: event.clientX, y: event.clientY, id: event.pointerId }; };
+    let drag: { id: number; x: number; value: number; axis: 'offsetX' | 'offsetY' | 'focus' } | undefined;
+    const pointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || drag) return;
+      down = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      const selected = current.current.handsOn ? hit(event) : undefined;
+      if (selected?.control) {
+        drag = { id: event.pointerId, x: event.clientX, value: current.current.handsOn!.optics[selected.control], axis: selected.control };
+        controls.enabled = false; targetCamera = null; targetLook = null;
+        renderer.domElement.setPointerCapture(event.pointerId);
+        event.preventDefault(); event.stopImmediatePropagation();
+      }
+    };
     const pointerUp = (event: PointerEvent) => {
+      if (drag?.id === event.pointerId) {
+        drag = undefined; down = undefined; controls.enabled = true;
+        if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+        event.preventDefault(); event.stopImmediatePropagation(); return;
+      }
       if (down && event.pointerId === down.id && Math.hypot(event.clientX - down.x, event.clientY - down.y) < 5 && event.button === 0) {
-        const selected = hit(event); if (selected) current.current.onInspect(selected);
+        const selected = hit(event);
+        if (current.current.handsOn && selected?.interaction) current.current.onInteract?.(selected.interaction);
+        else if (selected?.station) current.current.onInspect(selected.station);
       }
       down = undefined;
     };
-    const pointerCancel = () => { down = undefined; };
-    const pointerMove = (event: PointerEvent) => { if (!down) renderer.domElement.style.cursor = hit(event) ? 'pointer' : 'grab'; };
+    const pointerCancel = () => {
+      if (drag && renderer.domElement.hasPointerCapture(drag.id)) renderer.domElement.releasePointerCapture(drag.id);
+      drag = undefined; down = undefined; controls.enabled = true; setHovered('');
+    };
+    const pointerMove = (event: PointerEvent) => {
+      if (drag?.id === event.pointerId) {
+        current.current.onInteract?.({ type: 'opt-adjust', axis: drag.axis, value: Math.round(Math.max(-40, Math.min(40, drag.value + (event.clientX - drag.x) / 3))) });
+        event.preventDefault(); event.stopImmediatePropagation(); return;
+      }
+      if (!down) {
+        const selected = hit(event), manual = current.current.handsOn;
+        renderer.domElement.style.cursor = manual && selected?.control ? 'ew-resize' : selected?.station ? 'pointer' : 'grab';
+        setHovered(manual && selected?.label ? `${selected.control ? '左右拖动 · ' : '点击 · '}${selected.label}` : '');
+      }
+    };
     const controlStart = () => { targetCamera = null; targetLook = null; };
     const controlChange = () => { request(); };
     const manualMove = (event: PointerEvent) => {
-      if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) >= 5 && view !== 'free') { view = 'free'; current.current.onViewChange(view); }
+      if (!drag && down && Math.hypot(event.clientX - down.x, event.clientY - down.y) >= 5 && view !== 'free') { view = 'free'; current.current.onViewChange(view); }
     };
     const wheel = () => { view = 'free'; targetCamera = null; targetLook = null; current.current.onViewChange(view); };
     const contextLost = (event: Event) => { event.preventDefault(); lost = true; cancelAnimationFrame(frame); frame = 0; setError(true); };
-    renderer.domElement.addEventListener('pointerdown', pointerDown);
-    renderer.domElement.addEventListener('pointerup', pointerUp);
+    renderer.domElement.addEventListener('pointerdown', pointerDown, true);
+    renderer.domElement.addEventListener('pointerup', pointerUp, true);
     renderer.domElement.addEventListener('pointercancel', pointerCancel);
-    renderer.domElement.addEventListener('pointermove', pointerMove);
+    renderer.domElement.addEventListener('pointermove', pointerMove, true);
+    renderer.domElement.addEventListener('pointerleave', pointerCancel);
     renderer.domElement.addEventListener('pointermove', manualMove);
     renderer.domElement.addEventListener('wheel', wheel, { passive: true });
     renderer.domElement.addEventListener('webglcontextlost', contextLost);
@@ -164,6 +208,10 @@ export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, 
         inspectionBase.position.set(center.x, 1.05, center.z); inspectionBase.scale.set(size.x + .65, 1, size.z + .55);
       }
       model.update({ ...current.current, running: moving }, elapsed, reducedMotion.matches ? 100 : Math.min(elapsedFrame, 1));
+      if (previousHandsOn !== Boolean(current.current.handsOn)) {
+        previousHandsOn = Boolean(current.current.handsOn);
+        frameView(true);
+      }
       const active = model.stations[current.current.isolated ? focusedStation : current.current.station];
       ring.visible = !current.current.isolated;
       if (active) { ring.position.x = active.position.x; ring.position.z = active.position.z; ring.scale.setScalar(current.current.station === 'imager' ? 1.65 : 1.3); }
@@ -176,7 +224,7 @@ export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, 
       disposed = true; cancelAnimationFrame(frame); observer.disconnect(); intersection.disconnect();
       document.removeEventListener('visibilitychange', visibility); reducedMotion.removeEventListener('change', invalidate);
       controls.removeEventListener('start', controlStart); controls.removeEventListener('change', controlChange); controls.dispose();
-      renderer.domElement.removeEventListener('pointerdown', pointerDown); renderer.domElement.removeEventListener('pointerup', pointerUp); renderer.domElement.removeEventListener('pointercancel', pointerCancel); renderer.domElement.removeEventListener('pointermove', pointerMove); renderer.domElement.removeEventListener('pointermove', manualMove); renderer.domElement.removeEventListener('wheel', wheel); renderer.domElement.removeEventListener('webglcontextlost', contextLost);
+      renderer.domElement.removeEventListener('pointerdown', pointerDown, true); renderer.domElement.removeEventListener('pointerup', pointerUp, true); renderer.domElement.removeEventListener('pointercancel', pointerCancel); renderer.domElement.removeEventListener('pointermove', pointerMove, true); renderer.domElement.removeEventListener('pointerleave', pointerCancel); renderer.domElement.removeEventListener('pointermove', manualMove); renderer.domElement.removeEventListener('wheel', wheel); renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
       scene.traverse(object => { if (object instanceof THREE.Mesh) {
         if (object instanceof THREE.InstancedMesh) object.dispose();
@@ -190,5 +238,5 @@ export const LabScene = forwardRef<SceneHandle, Props>(function LabScene(props, 
       sun.shadow.dispose(); environment.dispose(); renderer.dispose(); container.replaceChildren(); runtime.current = null;
     };
   }, [props.caseId, attempt]);
-  return <><div ref={host} className="lab-webgl" role="img" aria-label={`${props.caseId === 'jtc' ? '光学' : '生物'}实验器材三维教学模型，可拖动旋转；也可用下方器材按钮和操作导览浏览。`}/>{error ? <div className="scene-fallback" role="status"><strong>三维场景暂不可用</strong><p>可继续使用操作导览。开启浏览器硬件加速后，可重新加载场景。</p><button onClick={() => setAttempt(value => value + 1)}>重新加载三维场景</button></div> : !ready && <div className="scene-fallback">正在布置实验台…</div>}</>;
+  return <>{hovered && props.handsOn && <div className="scene-hotspot-hint">{hovered}</div>}<div ref={host} className="lab-webgl" role="img" aria-label={`${props.caseId === 'jtc' ? '光学' : '生物'}实验器材三维教学模型，可拖动旋转；也可用下方器材按钮和操作导览浏览。`}/>{error ? <div className="scene-fallback" role="status"><strong>三维场景暂不可用</strong><p>可继续使用操作导览。开启浏览器硬件加速后，可重新加载场景。</p><button onClick={() => setAttempt(value => value + 1)}>重新加载三维场景</button></div> : !ready && <div className="scene-fallback">正在布置实验台…</div>}</>;
 });

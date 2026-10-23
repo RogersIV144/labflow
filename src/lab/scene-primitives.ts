@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { Station } from './scene-data';
+import type { HandsOnEvent, HandsOnState } from './interaction-state';
 
 export interface SceneProps {
   caseId: string; stepId: string; station: Station; action: number; total: number;
   isolated: boolean; running: boolean; exploded: boolean; exposure: number; alignment: number; onInspect: (station: Station) => void; onViewChange: (view: 'perspective'|'top'|'focus'|'free') => void;
+  handsOn?: HandsOnState;
+  onInteract?: (event: HandsOnEvent) => void;
 }
 export type Model = {
   root: THREE.Group;

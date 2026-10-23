@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { material, box, cylinder, station, label, cable, signalTexture, screen, bench, type Model } from './scene-primitives';
 import { opticalSignals } from './scene-state';
 import type { Station } from './scene-data';
+import { opticalMetrics, type OpticalCapture } from './interaction-state';
 
 // Generic optomechanics informed by manufacturers' construction drawings.
 // Dimensions, signals and visible beam volumes are instructional illustrations.
@@ -99,6 +100,50 @@ function irisDiaphragm(parent: THREE.Object3D, x: number, aperture: number) {
   return lever;
 }
 
+// Saved acquisitions deliberately retain their own quality and displacement.
+// This is a qualitative teaching image, not a diffraction calculation.
+function captureTexture(capture: OpticalCapture) {
+  const template = signalTexture(capture.kind);
+  const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 180;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#0b161d'; ctx.fillRect(0, 0, 256, 180);
+  const quality = Math.max(0, Math.min(1, capture.quality));
+  ctx.globalAlpha = quality;
+  ctx.filter = `blur(${(1 - quality) * 5}px)`;
+  ctx.drawImage(template.image as HTMLCanvasElement, capture.offsetX * .3, -capture.offsetY * .3);
+  ctx.filter = 'none'; ctx.globalAlpha = 1;
+  // Fixed background grain makes repeated acquisitions comparable.
+  for (let i = 0; i < 170; i++) {
+    ctx.fillStyle = `rgba(174,204,206,${.012 + (1 - quality) * .03})`;
+    ctx.fillRect((i * 71) % 256, (i * 37) % 180, 1, 1);
+  }
+  template.dispose();
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
+}
+
+function observationScreen(parent: THREE.Object3D, x: number, title: string) {
+  const group = new THREE.Group(); group.position.set(x, .76, .83); group.userData.pickThrough = true; parent.add(group);
+  const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 192;
+  const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#102934'; ctx.fillRect(0, 0, 256, 192);
+  ctx.strokeStyle = '#86a8ab'; ctx.lineWidth = 2; ctx.strokeRect(2, 2, 252, 188);
+  ctx.strokeStyle = '#587b87'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(128, 8); ctx.lineTo(128, 184); ctx.moveTo(8, 96); ctx.lineTo(248, 96); ctx.stroke();
+  const map = new THREE.CanvasTexture(canvas); map.colorSpace = THREE.SRGBColorSpace;
+  const surface = new THREE.Mesh(new THREE.PlaneGeometry(.59, .43), new THREE.MeshBasicMaterial({ map, transparent: true, opacity: .88, side: THREE.DoubleSide })); group.add(surface);
+  const spot = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.MeshBasicMaterial({ color: 0xffd0a0, transparent: true, opacity: .9, depthWrite: false })); spot.position.z = .008; group.add(spot);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.MeshBasicMaterial({ color: 0xffa070, transparent: true, opacity: .11, depthWrite: false })); halo.position.z = .006; group.add(halo);
+  label(group, title, 0, -.26, .006, .48, '#c8dfe0', '#183341');
+  return { group, spot, halo };
+}
+
+function controlHandle(handle: THREE.Group, axis: 'offsetX'|'offsetY'|'focus', name: string) {
+  handle.userData.control = axis; handle.userData.interactionLabel = name;
+  // A larger knurled cap keeps the pointer target usable at equipment scale.
+  const spin = new THREE.Group(); handle.add(spin);
+  cylinder(spin, .12, .04, 0, .22, 0, 0x517f84);
+  box(spin, .1, .008, .015, 0, .246, 0, 0xe4e8cf, .001);
+  return spin;
+}
+
 export function buildOptics(): Model {
   const root = new THREE.Group(); bench(root, true);
   const stations: Model['stations'] = {};
@@ -123,18 +168,23 @@ export function buildOptics(): Model {
   screws(laser, [[.692, 1.61, -.22], [.692, 1.61, .22], [.692, 1.19, -.22], [.692, 1.19, .22]], 'x');
   label(laser, 'LASER HEAD', -.06, 1.44, .318, .8, '#dde4e3', '#364248');
   label(laser, 'AVOID DIRECT EXPOSURE', -.04, 1.27, .319, .93, '#252c2b', '#dec279');
-  box(laser, .12, .065, .11, -.37, 1.721, .19, finish.black, .01);
+  const laserSwitch = box(laser, .18, .07, .16, -.37, 1.721, .19, finish.black, .01);
+  laserSwitch.userData.interaction = { type: 'opt-laser' }; laserSwitch.userData.interactionLabel = '切换激光电源';
   const laserLed = cylinder(laser, .025, .012, .34, 1.721, .21, 0x8cbb87); (laserLed.material as THREE.MeshStandardMaterial).emissive.setHex(0x284b24);
   cable(laser, [[-.67, 1.42, -.16], [-.9, 1.2, -.3], [-.81, .16, -.78], [-.18, .13, -1.15]], finish.rubber, .024);
   const control = new THREE.Group(); control.position.set(.35, 0, -1.35); laser.add(control);
   box(control, 1.2, .37, .62, 0, .25, 0, finish.metal);
   label(control, 'LASER CONTROL', -.1, .28, .32, .8, '#c7d9d9', '#202d33');
-  knob(control, .43, .25, .35, 'z', .065);
+  const powerSwitch = knob(control, .43, .25, .35, 'z', .1);
+  powerSwitch.userData.interaction = { type: 'opt-laser' }; powerSwitch.userData.interactionLabel = '切换激光电源';
+  label(control, 'ON / OFF', .4, .1, .32, .36, '#d4dfd5', '#27393f').userData.interaction = { type: 'opt-laser' };
   stationTag(laser, '01  LASER', 1.15);
 
   const iris = create('iris', -4.08);
   const nearLever = irisDiaphragm(iris, 0, .19);
   const farLever = irisDiaphragm(iris, .67, .14);
+  const nearScreen = observationScreen(iris, -.02, 'NEAR');
+  const farScreen = observationScreen(iris, .69, 'FAR');
   stationTag(iris, '02  AXIS / IRIS', 1.35);
 
   const filter = create('filter', -2.32);
@@ -160,14 +210,21 @@ export function buildOptics(): Model {
   const adjustY = knob(pinholeStage, 0, 1.8, 0, 'y', .075);
   const adjustZ = knob(pinholeStage, 0, axisHeight, .4, 'z', .075);
   const adjustX = knob(filter, -.63, .98, .13, 'x', .075);
+  const verticalControl = controlHandle(adjustY, 'offsetY', '拖动垂直旋钮');
+  const horizontalControl = controlHandle(adjustZ, 'offsetX', '拖动水平旋钮');
   label(filter, 'XYZ / PINHOLE', 0, .55, .35, .88, '#d7dfdf', '#29353a');
   stationTag(filter, '03  SPATIAL FILTER', 1.42);
 
-  const collimator = create('lens', -.72); mountedLens(collimator, .43); stationTag(collimator, '04  COLLIMATOR', 1.22);
+  const collimator = create('lens', -.72);
+  const lensCarriage = new THREE.Group(); collimator.add(lensCarriage); mountedLens(lensCarriage, .43);
+  const focusDial = knob(collimator, -.39, .8, .47, 'z', .09);
+  const focusControl = controlHandle(focusDial, 'focus', '拖动准直旋钮');
+  stationTag(collimator, '04  COLLIMATOR', 1.22);
 
   // A transmissive LCD SLM with an open four-sided housing and a thin active
   // window perpendicular to X, appropriate for the existing straight path.
   const input = create('input', 1.03); pedestal(input, 0, 0, .72, .88);
+  input.userData.interaction = { type: 'opt-input' }; input.userData.interactionLabel = '装载双目标图';
   box(input, .2, .32, .29, 0, .84, 0, finish.black);
   for (const z of [-.56, .56]) box(input, .19, 1.12, .13, 0, axisHeight, z, finish.black, .025);
   for (const y of [.89, 1.91]) box(input, .19, .14, 1.01, 0, y, 0, finish.black, .025);
@@ -184,6 +241,7 @@ export function buildOptics(): Model {
   const fourier = create('fourier', 2.85); mountedLens(fourier, .5); stationTag(fourier, '06  FOURIER LENS', 1.28);
 
   const camera = create('camera', 4.73); pedestal(camera, .18, 0, .86, .83);
+  camera.userData.interaction = { type: 'opt-capture' }; camera.userData.interactionLabel = '采集当前光学输出';
   box(camera, .7, .14, .63, .18, .98, 0, finish.black);
   alloy(box(camera, .84, .64, .66, .22, axisHeight, 0, 0x839ca6, .035), .7, .3);
   for (const z of [-.295, .295]) alloy(box(camera, .08, .68, .11, -.235, axisHeight, z, finish.metal, .016));
@@ -223,7 +281,7 @@ export function buildOptics(): Model {
   const radii = [.032, .032, .032, .12, .025, .29, .29, .29, .035];
   for (let i = 0; i < beamPoints.length - 1; i++) {
     const a = beamPoints[i], b = beamPoints[i + 1];
-    const light = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, b - a, 8), beamMat);
+    const light = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, b - a, 8), i === 0 ? beamMat : beamMat.clone());
     light.rotation.z = -Math.PI / 2; light.position.set((a + b) / 2, beamY, 0); beam.add(light); segments.push(light);
     const spread = new THREE.Mesh(new THREE.CylinderGeometry(radii[i + 1], radii[i], b - a, 28, 1, true), new THREE.MeshBasicMaterial({ color: 0xf3a890, transparent: true, opacity: .055, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
     spread.rotation.z = -Math.PI / 2; spread.position.copy(light.position); beam.add(spread); spreads.push(spread);
@@ -232,12 +290,77 @@ export function buildOptics(): Model {
   nearSpot.rotation.y = Math.PI / 2; nearSpot.position.set(-4.091, beamY, 0); beam.add(nearSpot);
   const farSpot = nearSpot.clone(); farSpot.position.x = -3.423; beam.add(farSpot);
   const photons = new THREE.InstancedMesh(new THREE.SphereGeometry(.018, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe5c9, toneMapped: false }), 7); photons.userData.pickThrough = true; root.add(photons);
+  iris.userData.inspectionBounds = new THREE.Box3(new THREE.Vector3(-.4, 0, -.5), new THREE.Vector3(1.1, 2.05, 1.1));
+  const startPoint = new THREE.Vector3(), endPoint = new THREE.Vector3(), direction = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   let previousInput = '', previousOutput = '';
 
   return { root, stations, update(props, time) {
-    const { input: inputKind, output: outputKind } = opticalSignals(props.stepId, props.action);
-    if (previousInput !== inputKind) { slmWindow.material.map?.dispose(); slmWindow.material.map = signalTexture(inputKind); previousInput = inputKind; }
-    if (previousOutput !== outputKind) { output.material.map?.dispose(); output.material.map = signalTexture(outputKind); previousOutput = outputKind; }
+    const manual = props.handsOn?.optics;
+    const demo = opticalSignals(props.stepId, props.action);
+    const inputKind = manual ? manual.input === 'objects' ? 'input' : manual.input === 'spectrum' ? 'spectrum' : 'empty' : demo.input;
+    const outputKind = manual ? manual.capture?.kind || 'empty' : demo.output;
+    const inputKey = manual ? `manual:${inputKind}:${inputKind === 'spectrum' ? JSON.stringify(manual.spectrum) : ''}` : `demo:${inputKind}`;
+    const outputKey = manual ? `manual:${JSON.stringify(manual.capture)}` : `demo:${outputKind}`;
+    if (previousInput !== inputKey) {
+      slmWindow.material.map?.dispose();
+      slmWindow.material.map = manual?.input === 'spectrum' && manual.spectrum ? captureTexture(manual.spectrum) : signalTexture(inputKind);
+      slmWindow.material.needsUpdate = true; previousInput = inputKey;
+    }
+    if (previousOutput !== outputKey) {
+      output.material.map?.dispose(); output.material.map = manual?.capture ? captureTexture(manual.capture) : signalTexture(outputKind);
+      output.material.needsUpdate = true; previousOutput = outputKey;
+    }
+    nearScreen.group.visible = farScreen.group.visible = Boolean(manual);
+    verticalControl.visible = horizontalControl.visible = focusControl.visible = Boolean(manual);
+    (laserLed.material as THREE.MeshStandardMaterial).color.setHex(manual && !manual.laserOn ? 0x47535a : 0x8cbb87);
+    (laserLed.material as THREE.MeshStandardMaterial).emissive.setHex(manual && !manual.laserOn ? 0 : 0x284b24);
+    (led.material as THREE.MeshStandardMaterial).color.setHex(outputKind === 'empty' ? 0xb7ab70 : 0x71bc9a);
+    if (manual) {
+      const metrics = opticalMetrics(manual), dz = manual.offsetX / 240, dy = manual.offsetY / 240;
+      // Enlarged movements relate the knobs, beam offset and specimen plane.
+      // The attenuated envelope represents partial clipping, not a binary gate.
+      horizontalControl.rotation.y = manual.offsetX * .12; verticalControl.rotation.y = manual.offsetY * .12; focusControl.rotation.y = manual.focus * .12;
+      adjustY.rotation.y = adjustZ.rotation.y = 0;
+      adjustX.rotation.x = 0;
+      pinholeStage.position.y = manual.offsetY / 650; pinholeStage.position.z = manual.offsetX / 650;
+      lensCarriage.position.x = manual.focus / 190;
+      nearLever.rotation.x = -.25; farLever.rotation.x = -.15;
+      powerSwitch.rotation.y = manual.laserOn ? .25 : -.25;
+      [nearScreen, farScreen].forEach((screen, index) => {
+        const spot = index ? metrics.far : metrics.near;
+        screen.spot.visible = screen.halo.visible = manual.laserOn;
+        screen.spot.position.set(spot.x * .0055, spot.y * .0055, .008); screen.halo.position.set(spot.x * .0055, spot.y * .0055, .006);
+        screen.spot.scale.setScalar(spot.r * .0055); screen.halo.scale.setScalar(spot.r * .008);
+      });
+      beam.visible = manual.laserOn && !props.isolated; photons.visible = manual.laserOn && !props.isolated;
+      beam.position.set(0, 0, 0);
+      segments.forEach((part, i) => {
+        const a = beamPoints[i], b = beamPoints[i + 1], distance = b - a;
+        startPoint.set(a, beamY + (i ? dy : 0), i ? dz : 0); endPoint.set(b, beamY + dy, dz);
+        direction.subVectors(endPoint, startPoint);
+        part.scale.y = direction.length() / distance;
+        part.position.copy(startPoint).add(endPoint).multiplyScalar(.5); part.quaternion.setFromUnitVectors(up, direction.normalize()); part.visible = true;
+        (part.material as THREE.MeshBasicMaterial).opacity = i < 2 ? .8 : .8 * metrics.transmission;
+        const spread = spreads[i]; spread.position.copy(part.position); spread.quaternion.copy(part.quaternion); spread.scale.y = part.scale.y; spread.visible = true;
+        const expansion = i < 5 ? 1 : 1 + Math.abs(manual.focus) / 42 * (i - 4) / 3;
+        spread.scale.x = spread.scale.z = expansion;
+        (spread.material as THREE.MeshBasicMaterial).opacity = .065 * (i < 2 ? 1 : metrics.transmission);
+      });
+      nearSpot.visible = farSpot.visible = false;
+      // Static markers remain readable while the scene is idle; continuous
+      // rendering is unnecessary when a learner merely leaves the laser on.
+      const end = metrics.transmission < .05 ? -3.41 : metrics.transmission < .3 ? -2.02 : 4.28;
+      for (let i = 0; i < 7; i++) {
+        const x = -4.7 + (i + .5) / 7 * (end + 4.7), proportion = Math.min(1, (x + 4.7) / .62);
+        matrix.makeTranslation(x, beamY + dy * proportion, dz * proportion); photons.setMatrixAt(i, matrix);
+      }
+      photons.instanceMatrix.needsUpdate = true;
+      return;
+    }
+    beam.visible = photons.visible = !props.isolated;
+    powerSwitch.rotation.y = 0;
+    pinholeStage.position.y = pinholeStage.position.z = lensCarriage.position.x = 0;
+    beam.position.y = 0;
     const deviation = props.alignment / 210;
     beam.position.z = deviation;
     // Motion is enlarged for visibility; this is not a micrometer calibration.
@@ -248,6 +371,9 @@ export function buildOptics(): Model {
     farLever.rotation.x = props.stepId === 'jtc-coaxial' ? -.2 : -.08;
     const pastNear = Math.abs(deviation) < .18, pastFar = Math.abs(deviation) < .13, pastPinhole = Math.abs(props.alignment) < 8;
     segments.forEach((part, i) => {
+      part.position.set((beamPoints[i] + beamPoints[i + 1]) / 2, beamY, 0); part.rotation.set(0, 0, -Math.PI / 2); part.scale.set(1, 1, 1);
+      (part.material as THREE.MeshBasicMaterial).opacity = .8;
+      spreads[i].position.copy(part.position); spreads[i].rotation.copy(part.rotation); spreads[i].scale.set(1, 1, 1); (spreads[i].material as THREE.MeshBasicMaterial).opacity = .055;
       part.visible = i === 0 || i === 1 && pastNear || i > 1 && i < 4 && pastNear && pastFar || i >= 4 && pastNear && pastFar && pastPinhole;
       spreads[i].visible = part.visible;
     });
@@ -258,6 +384,5 @@ export function buildOptics(): Model {
       matrix.makeTranslation(x, beamY, deviation); photons.setMatrixAt(i, matrix);
     }
     photons.instanceMatrix.needsUpdate = true;
-    (led.material as THREE.MeshStandardMaterial).color.setHex(outputKind === 'empty' ? 0xb7ab70 : 0x71bc9a);
   } };
 }

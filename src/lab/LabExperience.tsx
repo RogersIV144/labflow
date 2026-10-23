@@ -4,6 +4,8 @@ import type { LabCase } from '../../shared/types';
 import { lessonForStep, lessons, practiceScope, scenePhases, stationNames, type Station } from './scene-data';
 import { initialAdjustments, opticalSignals, playbackReducer } from './scene-state';
 import { equipmentDetails } from './scene-equipment';
+import { createHandsOnState, handsOnReducer, type HandsOnEvent } from './interaction-state';
+import HandsOnPanel from './HandsOnPanel';
 import type { SceneHandle } from './LabScene';
 const LabScene = lazy(() => import('./LabScene').then(module => ({ default: module.LabScene })));
 
@@ -40,6 +42,11 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
   const [speed, setSpeed] = useState(1);
   const [isolated, setIsolated] = useState(false);
   const [inspected, setInspected] = useState<Station>();
+  const [manual, setManual] = useState(false);
+  const [handsOn, send] = useReducer(handsOnReducer, undefined, createHandsOnState);
+  const [operating, setOperating] = useState<Station>(lesson.station);
+  const previousManual = useRef(manual);
+  const previousCase = useRef(lab.id);
   const [view, setView] = useState<'perspective' | 'top' | 'focus' | 'free'>('perspective');
   const scene = useRef<SceneHandle>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -48,7 +55,7 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
   const stationSteps = inspected ? lab.sequence.filter(key => lessons[key]?.station === inspected || inspected === 'fourier' && ['jtc-spectrum', 'jtc-read'].includes(key)) : [];
   const stations: Station[] = optical ? ['laser', 'iris', 'filter', 'lens', 'input', 'fourier', 'camera'] : [...new Set(lab.sequence.map(key => lessons[key].station))];
   const signals = opticalSignals(id, action);
-  const select = (next: string) => { dispatch({ type: 'pause' }); onSelect(next); };
+  const select = (next: string) => { dispatch({ type: 'pause' }); if (manual) setOperating(lessons[next].station); onSelect(next); };
   const focus = (station?: Station) => { if (!station) setInspected(undefined); scene.current?.focus(station); setView('focus'); };
   const reset = () => { dispatch({ type: 'reset' }); setAdjustments(initialAdjustments(id)); };
   const seek = (next: number) => { dispatch({ type: 'seek', action: next, total: lesson.actions.length }); };
@@ -57,11 +64,49 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
     setInspected(undefined);
     if (inspected) stationButtons.current[inspected]?.focus({ preventScroll: true });
   };
+  const operateAt = (station: Station) => { setOperating(station); setInspected(undefined); scene.current?.focus(station); setView('focus'); };
+  const interact = (event: HandsOnEvent) => {
+    send(event);
+    if (['wb-tip', 'wb-eject', 'wb-aspirate'].includes(event.type)) operateAt('sample');
+    else if (['wb-lane', 'wb-dispense', 'wb-lid', 'wb-run'].includes(event.type)) operateAt('gel');
+    else if (event.type === 'wb-transfer') operateAt('transfer');
+    else if (event.type === 'wb-detect') operateAt('tray');
+    else if (event.type === 'wb-capture') operateAt('imager');
+  };
+  const navigateManual = (step: string, station: Station) => { select(step); operateAt(station); };
+  const switchMode = (next: boolean) => {
+    dispatch({ type: 'pause' });
+    if (handsOn.wb.running) send({ type: 'wb-run' });
+    setManual(next); setInspected(undefined); if (next) setIsolated(true);
+    if (next) { onSelect(optical ? 'jtc-axis' : 'wb-gel'); operateAt(optical ? 'iris' : 'sample'); }
+  };
 
   useEffect(() => {
     dispatch({ type: 'select', stepId: id });
     setAdjustments(initialAdjustments(id)); setInspected(undefined);
   }, [id]);
+  useEffect(() => {
+    if (manual) scene.current?.focus(operating);
+    else if (previousManual.current) scene.current?.focus(lesson.station);
+    previousManual.current = manual;
+  }, [manual, operating, id]);
+  useEffect(() => {
+    if (previousCase.current !== lab.id) {
+      if (handsOn.wb.running) send({ type: 'wb-run' });
+      if (manual) { setOperating(optical ? 'iris' : 'sample'); onSelect(optical ? 'jtc-axis' : 'wb-gel'); }
+      previousCase.current = lab.id;
+    }
+  }, [lab.id]);
+  useEffect(() => {
+    if (!manual || optical || !handsOn.wb.running) return;
+    let previous = performance.now();
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+      if (!document.hidden) send({ type: 'wb-tick', delta: Math.min(now - previous, 200) / 18000 });
+      previous = now;
+    }, 80);
+    return () => window.clearInterval(timer);
+  }, [manual, optical, handsOn.wb.running]);
   useEffect(() => {
     const rail = strip.current;
     const button = rail?.querySelector<HTMLElement>('[aria-current="step"]');
@@ -81,40 +126,42 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
     setAdjustments(current => ({ ...current, ...(id === 'wb-transfer' ? { exploded: action < 3 } : {}), ...(optical && index < 4 ? { alignment: action >= 2 ? 0 : 35 } : {}) }));
   }, [id, action]);
 
-  return <div ref={root} className={`lab-experience ${optical ? 'optical' : 'biological'} ${focused ? 'lab-enlarged' : ''}`} onKeyDown={event => {
+  return <div ref={root} className={`lab-experience ${optical ? 'optical' : 'biological'} ${focused ? 'lab-enlarged' : ''} ${manual ? 'is-hands-on' : ''}`} onKeyDown={event => {
     if (event.key === 'Escape') { closeInspection(); onFocus(false); }
   }}>
     <header className="lab-intro">
       <div><span className="lab-kicker">{optical ? 'OPTICAL LAB' : 'MOLECULAR LAB'} / 交互实验室</span><h2>{optical ? '沿着光路，理解两次测量。' : '把每一步，放回实验台。'}</h2></div>
       <button className="scene-reference-link" onClick={() => onReference(id)}><BookOpen size={15}/> 流程与笔记 <ArrowRight size={14}/></button>
     </header>
+    <section className="experiment-mode" aria-label="实验操作模式"><div><button aria-pressed={!manual} onClick={() => switchMode(false)}><Eye size={14}/> 观看演示</button><button aria-pressed={manual} onClick={() => switchMode(true)}><Hand size={14}/> 动手操作</button></div><p>{manual ? '直接操作器材，观察由你产生的变化。切换步骤会保留当前实验状态。' : '先看清步骤，也可以随时切到动手操作，亲自试一次。'}</p></section>
     <nav className="lab-phases" aria-label="实验阶段">{phases.map((item, i) => <button key={item.id} aria-current={phase.id === item.id ? 'step' : undefined} onClick={() => select(item.steps[0])}><span>{String(i + 1).padStart(2, '0')}</span>{item.title}<small>{item.steps.length} 步</small></button>)}</nav>
     <div className="lab-body">
       <div className="lab-visual-column">
         <section className="lab-stage" aria-label={optical ? 'JTC 三维光学实验台' : 'Western Blot 三维实验台'}>
-          <div className="stage-header"><div className="stage-title"><span className="live-dot"/><strong>{stationNames[inspected || lesson.station]}</strong><span>教学模型</span></div><div className="stage-tools"><button className="scene-isolate" aria-pressed={isolated} onClick={() => { setIsolated(value => !value); focus(inspected); }}><Eye size={14}/>{isolated ? '显示全部器材' : '仅看当前器材'}</button><button className="scene-expand" aria-label={focused ? '退出场景专注' : '放大实验场景'} aria-pressed={focused} onClick={() => onFocus(!focused)}>{focused ? <Minimize2 size={17}/> : <Maximize2 size={17}/>}</button></div></div>
-          <SceneBoundary><Suspense fallback={<div className="scene-fallback">正在加载三维器材…</div>}><LabScene ref={scene} caseId={lab.id} stepId={id} station={lesson.station} action={action} total={lesson.actions.length} isolated={isolated} running={playing} exploded={exploded} exposure={exposure} alignment={alignment} onInspect={inspect} onViewChange={setView}/></Suspense></SceneBoundary>
+          <div className="stage-header"><div className="stage-title"><span className="live-dot"/><strong>{stationNames[inspected || (manual ? operating : lesson.station)]}</strong><span>{manual ? '动手操作' : '教学模型'}</span></div><div className="stage-tools"><button className="scene-isolate" aria-pressed={isolated} onClick={() => { setIsolated(value => !value); focus(inspected); }}><Eye size={14}/>{isolated ? '显示全部器材' : '仅看当前器材'}</button><button className="scene-expand" aria-label={focused ? '退出场景专注' : '放大实验场景'} aria-pressed={focused} onClick={() => onFocus(!focused)}>{focused ? <Minimize2 size={17}/> : <Maximize2 size={17}/>}</button></div></div>
+          <SceneBoundary><Suspense fallback={<div className="scene-fallback">正在加载三维器材…</div>}><LabScene ref={scene} caseId={lab.id} stepId={id} station={manual ? operating : lesson.station} action={action} total={lesson.actions.length} isolated={isolated} running={manual ? !optical && handsOn.wb.running : playing} exploded={exploded} exposure={exposure} alignment={alignment} handsOn={manual ? handsOn : undefined} onInteract={interact} onInspect={inspect} onViewChange={setView}/></Suspense></SceneBoundary>
           <div className="stage-view-controls" aria-label="场景镜头"><button aria-pressed={view === 'perspective'} onClick={() => { setIsolated(false); scene.current?.reset(); setView('perspective'); }}><RotateCcw size={14}/> 全景</button><button aria-pressed={view === 'focus'} onClick={() => { setInspected(undefined); focus(); }}><Focus size={14}/> 当前操作</button><button aria-pressed={view === 'top'} onClick={() => { scene.current?.view('top'); setView('top'); }}><ScanLine size={14}/> 俯视</button></div>
           <span className="stage-caption">{optical ? 'JTC' : 'WB'} · {String(index + 1).padStart(2, '0')} / {lab.sequence.length}</span>
           <span className="stage-gesture"><Hand size={13}/> 拖动旋转 · 滚轮缩放</span>
         </section>
-        <div className="scene-stations" aria-label="浏览实验器材">{stations.map(station => <button key={station} ref={button => { stationButtons.current[station] = button; }} aria-pressed={(inspected || lesson.station) === station} aria-expanded={inspected === station} aria-controls={inspected === station ? 'equipment-guide' : undefined} onClick={() => inspect(station)}>{stationNames[station]}</button>)}</div>
+        <div className="scene-stations" aria-label="浏览实验器材">{stations.map(station => <button key={station} ref={button => { stationButtons.current[station] = button; }} aria-pressed={(inspected || (manual ? operating : lesson.station)) === station} aria-expanded={inspected === station} aria-controls={inspected === station ? 'equipment-guide' : undefined} onClick={() => inspect(station)}>{stationNames[station]}</button>)}</div>
         {inspected && <section id="equipment-guide" className="equipment-guide" aria-label="器材说明">
           <header className="equipment-guide-heading"><div><Eye size={15}/><h3>{stationNames[inspected]}</h3><span>观察部件</span></div><button aria-label="关闭器材说明" onClick={closeInspection}><X size={16}/></button></header>
           <dl className="equipment-parts">{equipmentDetails[inspected].parts.map(part => <div key={part.name}><dt>{part.name}</dt><dd>{part.description}</dd></div>)}</dl>
           <p className="equipment-look"><Focus size={13}/>{equipmentDetails[inspected].look}</p>
           <div className="equipment-related"><span>相关步骤</span><div className="station-step-links">{stationSteps.map(key => <button key={key} aria-current={key === id ? 'step' : undefined} onClick={() => { select(key); setInspected(undefined); }}>{lab.sequence.indexOf(key) + 1}. {lab.steps.find(item => item.id === key)?.title}</button>)}{!stationSteps.length && <span>配合光轴基准步骤观察光源与光路。</span>}</div></div>
         </section>}
-        <div className="lab-playback" aria-label="演示控制">
+        {manual ? <div className="manual-session-strip" aria-label="当前操作状态"><strong><i/>实验进行中</strong>{optical ? <><span>激光 {handsOn.optics.laserOn ? 'ON' : 'OFF'}</span><span>X {handsOn.optics.offsetX} / Y {handsOn.optics.offsetY}</span><span>{handsOn.optics.capture ? '已有采集快照' : '等待采集'}</span></> : <><span>吸头 {handsOn.wb.held} µL</span><span>泳道 {handsOn.wb.lane + 1}：{handsOn.wb.lanes[handsOn.wb.lane]} µL</span><span>{handsOn.wb.running ? '电泳运行中' : handsOn.wb.progress === 1 ? '电泳完成' : '等待操作'}</span></>}</div> : <><div className="lab-playback" aria-label="演示控制">
           <button className="lab-play" aria-label={playing ? '暂停操作演示' : '播放操作演示'} onClick={() => { if (!playing) focus(); dispatch({ type: 'toggle', total: lesson.actions.length }); }}>{playing ? <Pause size={19}/> : <Play size={19} fill="currentColor"/>}</button>
           <div className="playback-label" aria-live="polite"><strong>{playing ? '正在演示' : action === lesson.actions.length ? '演示结束，可逐项回看' : action ? '已暂停 · 可自由观察' : '准备就绪'}</strong><span>{action ? lesson.actions[action - 1] : '播放本步，或选择右侧任一操作'}</span></div>
           <label className="playback-speed"><span>演示速度</span><select aria-label="演示速度" value={speed} onChange={e => setSpeed(Number(e.target.value))}><option value={.5}>0.5×</option><option value={1}>1×</option><option value={1.5}>1.5×</option></select></label>
           <button className="playback-reset" aria-label="重置本步演示和参数" title="重置本步" onClick={reset}><RotateCcw size={16}/></button>
         </div>
-        <div className="action-scrubber"><span>{action} / {lesson.actions.length}</span><input aria-label="演示进度" type="range" min="0" max={lesson.actions.length} value={action} onChange={e => seek(Number(e.target.value))}/><span>逐项回看</span></div>
+        <div className="action-scrubber"><span>{action} / {lesson.actions.length}</span><input aria-label="演示进度" type="range" min="0" max={lesson.actions.length} value={action} onChange={e => seek(Number(e.target.value))}/><span>逐项回看</span></div></>}
         <div className="lab-step-navigation"><button aria-label="上一个场景步骤" disabled={index === 0} onClick={() => select(lab.sequence[index - 1])}><ChevronLeft size={17}/></button><label><span>当前步骤</span><select aria-label="跳转场景步骤" value={id} onChange={e => select(e.target.value)}>{lab.sequence.map((key, i) => <option key={key} value={key}>{String(i + 1).padStart(2, '0')} · {lab.steps.find(item => item.id === key)?.title}</option>)}</select></label><button className="lab-next" disabled={index === lab.sequence.length - 1} onClick={() => select(lab.sequence[index + 1])}>下一步 <ChevronRight size={16}/></button></div>
       </div>
       <aside className="lab-instructions" aria-label="当前步骤操作导览">
+        {manual ? <HandsOnPanel key={lab.id} optical={optical} state={handsOn} stepId={id} send={interact} navigate={navigateManual}/> : <>
         <div className="lesson-title"><span className="lesson-number">{String(index + 1).padStart(2, '0')}</span><div><span className="lesson-phase">{phase.title}</span><h3>{step.title}</h3></div></div>
         <p className="lesson-equipment">{lesson.equipment}</p><p className="lesson-summary">{step.summary}</p>
         <section className="lesson-section"><h4><Hand size={15}/> 操作导览 <span>点击回看</span></h4><ol className="lesson-actions">{lesson.actions.map((text, i) => <li key={text}><button aria-current={action === i + 1 ? 'step' : undefined} onClick={() => { seek(i + 1); focus(); }}><span>{action > i + 1 ? <Check size={13}/> : i + 1}</span><strong>{text}</strong>{action === i + 1 && <Eye size={15}/>}</button></li>)}</ol></section>
@@ -126,6 +173,7 @@ export default function LabExperience({ lab, selected, focused, onSelect, onPrac
         <section className="lesson-observe"><Eye size={17}/><div><h4>停下来，观察一下</h4><p>{action === lesson.actions.length ? lesson.observation : step.check}</p></div></section>
         <details className="lesson-reference"><summary><CircleHelp size={15}/> 为什么这样做 · 参考依据</summary><p>{step.why}</p><small>{step.source}</small></details>
         <button className="scene-practice" onClick={() => onPractice(practiceScope(lab, id))}>回忆这一阶段 <ArrowRight size={15}/></button>
+        </>}
       </aside>
     </div>
     <section className="lab-journey" aria-label="实验场景步骤"><div className="journey-heading"><strong>{phase.title}</strong><span>本次完整播放 {playback.visited.length} / {lab.sequence.length} 步</span></div><div className="journey-strip" ref={strip}>{phase.steps.map(key => <button key={key} aria-label={`场景步骤 ${lab.sequence.indexOf(key) + 1} ${lab.steps.find(item => item.id === key)?.title}`} aria-current={key === id ? 'step' : undefined} onClick={() => select(key)}><span>{playback.visited.includes(key) ? <Check size={13}/> : String(lab.sequence.indexOf(key) + 1).padStart(2, '0')}</span><strong>{lab.steps.find(item => item.id === key)?.title}</strong></button>)}</div></section>
