@@ -106,8 +106,12 @@ export function structuralFindings(task: Task, answer: Answer): string[] {
 
 export function publicFeedback(task: Task, assessment: Assessment, snapshotId: string, submittedAt: string): Feedback {
   // This allowlist is the boundary. Never spread internal assessments into API output.
-  return { verdict: assessment.verdict, message: verdictText[assessment.verdict], source: assessment.source, helpLevel: task.helpLevel,
-    assisted: task.assisted, snapshotId, submittedAt };
+  const base = verdictText[assessment.verdict];
+  // A degraded run is not a judgement: say so instead of showing a bare "暂无法判断".
+  // Covers both "model unavailable" and "turn timed out", so the wording stays accurate.
+  const message = assessment.degraded ? `${base}（AI 未完成判定，本次仅完成本地检查）` : base;
+  return { verdict: assessment.verdict, message, source: assessment.source, helpLevel: task.helpLevel,
+    assisted: task.assisted, snapshotId, submittedAt, degraded: Boolean(assessment.degraded) };
 }
 
 export class Engine {

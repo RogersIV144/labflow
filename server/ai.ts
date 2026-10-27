@@ -1,6 +1,6 @@
 import { CodexBridge } from './codex';
 
-export type RunOptions = { model?: string; effort?: string };
+export type RunOptions = { model?: string; effort?: string; timeoutMs?: number };
 export type TutorModel = {
   model: string;
   isDefault: boolean;
@@ -13,6 +13,9 @@ export type TutorStatus = {
   backend: 'codex' | 'openai-compatible';
   model?: string;
   message: string;
+  /** True when the account looks usable but the most recent turn failed or timed out. */
+  degraded?: boolean;
+  lastFailure?: { at: string; message: string };
 };
 export interface TutorBridge {
   status(): Promise<TutorStatus>;
