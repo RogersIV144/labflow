@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 import { EventEmitter } from 'node:events';
 
 const macBinary = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex';
+/** Upper bound for one model turn. A slow harness can raise it with LABFLOW_TURN_TIMEOUT_MS. */
+const turnTimeoutMs = () => Number(process.env.LABFLOW_TURN_TIMEOUT_MS) || 120_000;
 type Pending = { resolve: (data: any) => void; reject: (error: Error) => void; timer: NodeJS.Timeout };
 
 /** Uses the user's installed harness; never implements an agent/tool execution loop. */
@@ -19,6 +21,7 @@ export class CodexBridge {
   private defaultModel?: string;
   private log = '';
   private startupError = '';
+  private lastFailure?: { at: string; message: string };
   private cwd = resolve(process.env.LABFLOW_DATA_DIR || '.labflow','tutor');
 
   private request(method: string, params: object, timeoutMs = 30_000): Promise<any> {
@@ -91,9 +94,13 @@ export class CodexBridge {
       await this.start();
       const result = await this.request('account/read', { refreshToken: false }, 5_000);
       const available = Boolean(result.account || result.authMode);
-      return { available, backend: 'codex' as const, model: process.env.LABFLOW_MODEL || this.defaultModel,
-        message: available ? 'Codex 已连接' : '请先在本机登录 Codex（ChatGPT 或 API key）' };
-    } catch { return { available: false, backend: 'codex' as const, model: process.env.LABFLOW_MODEL || this.defaultModel, message: this.startupError || 'Codex 暂不可用，请检查本机登录与网络' }; }
+      // A logged-in account is not proof that turns complete; report the last turn too.
+      const degraded = available && Boolean(this.lastFailure);
+      return { available, degraded, lastFailure: this.lastFailure, backend: 'codex' as const, model: process.env.LABFLOW_MODEL || this.defaultModel,
+        message: available
+          ? (degraded ? `Codex 已登录，但最近一次请求失败：${this.lastFailure!.message}` : 'Codex 已连接')
+          : '请先在本机登录 Codex（ChatGPT 或 API key）' };
+    } catch { return { available: false, degraded: true, lastFailure: this.lastFailure, backend: 'codex' as const, model: process.env.LABFLOW_MODEL || this.defaultModel, message: this.startupError || 'Codex 暂不可用，请检查本机登录与网络' }; }
   }
 
   async models() {
@@ -110,7 +117,7 @@ export class CodexBridge {
     }));
   }
 
-  async run(prompt: string, schema: object, signal?: AbortSignal, options?: { model?: string; effort?: string }): Promise<any> {
+  async run(prompt: string, schema: object, signal?: AbortSignal, options?: { model?: string; effort?: string; timeoutMs?: number }): Promise<any> {
     await this.start();
     if (signal?.aborted) throw new Error('已取消');
     const { thread } = await this.request('thread/start', {
@@ -128,7 +135,7 @@ export class CodexBridge {
       const timer = setTimeout(() => {
         if (turnId) void this.request('turn/interrupt', { threadId: thread.id, turnId }).catch(() => {});
         finish(new Error('检查用时较长，请重试'));
-      }, 120_000);
+      }, options?.timeoutMs ?? turnTimeoutMs());
       const notification = (message: any) => {
         const params = message.params;
         if (params?.threadId !== thread.id) return;
@@ -149,6 +156,9 @@ export class CodexBridge {
       finish = (error, value) => {
         if (settled) return;
         settled = true;
+        // Status must not keep claiming a healthy connection after a turn failed.
+        if (error && error.message !== '已取消') this.lastFailure = { at: new Date().toISOString(), message: error.message };
+        else if (!error) this.lastFailure = undefined;
         clearTimeout(timer);
         this.events.off('notification', notification);
         this.events.off('disconnected', disconnected);

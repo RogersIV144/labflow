@@ -24,10 +24,10 @@ export interface PublicTask {
   parentId: string; questionId?: string;
   generation?: { source: 'preset' | 'ai'; message: string };
 }
-export interface Assessment { verdict: Verdict; detail: string; focusIndex?: number; source: AssessmentSource; }
+export interface Assessment { verdict: Verdict; detail: string; focusIndex?: number; source: AssessmentSource; degraded?: boolean; }
 export interface Feedback {
   verdict: Verdict; message: string; source: AssessmentSource; helpLevel: number; assisted: boolean;
-  snapshotId: string; submittedAt: string;
+  snapshotId: string; submittedAt: string; degraded?: boolean;
 }
 export interface PublicJob { id: string; status: 'running' | 'completed' | 'failed' | 'cancelled'; feedback?: Feedback; message?: string }
 export interface Progress { [key: string]: { independent: string[]; aided: number; seen: number } }
