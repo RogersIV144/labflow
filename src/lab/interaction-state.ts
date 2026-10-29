@@ -11,7 +11,11 @@ export interface WBState {
   lidClosed: boolean;
   running: boolean;
   progress: number;
+  /** Which side of the gel the membrane was placed on; null until the learner decides. */
+  membraneSide: 'anode' | 'cathode' | null;
   transferred: boolean;
+  /** Which step the learner chose to run first in immunodetection; null until decided. */
+  detectFirst: 'block' | 'primary' | null;
   detected: boolean;
   exposure: number;
   captured: boolean;
@@ -38,6 +42,8 @@ export interface HandsOnState { wb: WBState; optics: OpticsState; }
 export type HandsOnEvent =
   | { type: 'wb-volume'; value: number }
   | { type: 'wb-tip' | 'wb-eject' | 'wb-aspirate' | 'wb-lid' | 'wb-run' | 'wb-transfer' | 'wb-detect' | 'wb-capture' | 'wb-reset' }
+  | { type: 'wb-membrane'; side: 'anode' | 'cathode' }
+  | { type: 'wb-detect-first'; first: 'block' | 'primary' }
   | { type: 'wb-lane'; lane: number }
   | { type: 'wb-dispense'; lane?: number }
   | { type: 'wb-tick'; delta: number }
@@ -53,7 +59,7 @@ export function createHandsOnState(): HandsOnState {
   return {
     wb: {
       volume: 20, tip: 'none', held: 0, source: 200, lanes: [0, 0, 0, 0], lane: 0, target: 'source',
-      lidClosed: false, running: false, progress: 0, transferred: false, detected: false, exposure: 40, captured: false,
+      lidClosed: false, running: false, progress: 0, membraneSide: null, transferred: false, detectFirst: null, detected: false, exposure: 40, captured: false,
       feedback: feedback('info', '先装新吸头，再从样品管吸液，选择泳道并加样。'),
     },
     optics: {
@@ -133,20 +139,36 @@ export function handsOnReducer(state: HandsOnState, event: HandsOnEvent): HandsO
       const progress = clamp(w.progress + event.delta, 0, 1);
       return wb({ progress, running: progress < 1, ...(progress === 1 ? { feedback: feedback('success', '电泳示意已完成。各泳道保留本次加样量，可继续转膜与成像。') } : {}) });
     }
+    case 'wb-membrane': {
+      if (w.transferred) return wb({ feedback: feedback('info', '本次已完成转膜，膜的位置不再改变。重置后可重新组装。') });
+      if (w.progress < 1 || w.running) return warnWB('先完成电泳，再组装转膜夹层。');
+      if (event.side === 'cathode') return wb({ membraneSide: 'cathode', feedback: feedback('warning', '蛋白带负电，通电后向阳极迁移。膜放在阴极侧时蛋白会穿过凝胶离开，膜上接不到样品。请把膜换到阳极侧。') });
+      return wb({ membraneSide: 'anode', feedback: feedback('success', '膜已在阳极侧。蛋白向阳极迁移后滞留在膜上，可以合拢夹层。') });
+    }
     case 'wb-transfer':
       if (w.progress < 1 || w.running) return warnWB('先完成电泳，再进行转膜。');
       if (w.transferred) return wb({ feedback: feedback('info', '本次样品已转到膜上，继续完成免疫检测后再成像。') });
-      return wb({ transferred: true, captured: false, feedback: feedback('success', '已完成教学转膜。继续完成封闭、抗体孵育及洗膜的免疫检测示意。') });
+      if (!w.membraneSide) return warnWB('先在展开的夹层上确认膜放在凝胶的哪一侧，再合拢转膜。');
+      if (w.membraneSide !== 'anode') return warnWB('膜还在阴极侧，蛋白会穿过凝胶而接不到膜上。先把膜换到阳极侧。');
+      return wb({ transferred: true, captured: false, feedback: feedback('success', '已完成教学转膜：阴极 − → 凝胶 → 膜 → 阳极 +。继续完成免疫检测示意。') });
+    case 'wb-detect-first': {
+      if (!w.transferred) return warnWB('先完成转膜，再进行封闭与抗体孵育。');
+      if (w.detected) return wb({ feedback: feedback('info', '本次免疫检测示意已完成，可以前往成像。') });
+      if (event.first === 'primary') return wb({ detectFirst: 'primary', feedback: feedback('warning', '封闭是先占据膜上的非特异结合位点，一抗才是识别目标。先加一抗再补封闭，已经发生的非特异结合不会被撤销。请先封闭。') });
+      return wb({ detectFirst: 'block', feedback: feedback('success', '先封闭再一抗。封闭把非特异位点占住之后，一抗的结合才具有区分度。') });
+    }
     case 'wb-detect':
       if (!w.transferred) return warnWB('先完成转膜，再进行封闭、抗体孵育及洗膜。');
-      return wb({ detected: true, feedback: feedback('success', '封闭、一抗孵育、洗膜、二抗孵育与再洗膜示意已完成，可以前往成像。') });
+      if (w.detected) return wb({ feedback: feedback('info', '本次免疫检测示意已完成，可以前往成像。') });
+      if (w.detectFirst !== 'block') return warnWB('先确认第一步是封闭还是直接上一抗。');
+      return wb({ detected: true, feedback: feedback('success', '封闭 → 一抗 → 洗膜 → 二抗 → 再洗膜示意已完成，可以前往成像。') });
     case 'wb-exposure':
       if (!Number.isFinite(event.value)) return state;
       return wb({ exposure: clamp(Math.round(event.value), 5, 100), captured: false });
     case 'wb-capture':
       if (!w.transferred) return warnWB('先完成电泳与转膜，成像仪才能看到本次样品。');
       if (!w.detected) return warnWB('转膜后还需完成免疫检测示意：封闭、一抗、洗膜、二抗与再洗膜。');
-      return wb({ captured: true, feedback: feedback(w.exposure > 75 ? 'warning' : 'success', w.exposure > 75 ? '已采集。曝光偏高，部分条带趋于饱和，比较差异会更困难。' : w.exposure < 20 ? '已采集。曝光偏低，弱条带不易分辨。' : '已采集本次条带。空泳道保持空白，加样量差异会影响示意信号。') });
+      return wb({ captured: true, feedback: feedback(w.exposure > 75 ? 'warning' : 'success', w.exposure > 75 ? '已采集。曝光偏高，条带已经饱和：饱和条带的灰度不再随蛋白量变化，不能用于组间定量比较。降低曝光后重新采集。' : w.exposure < 20 ? '已采集。曝光偏低，弱条带不易分辨。' : '已采集本次条带。空泳道保持空白，加样量差异会影响示意信号。') });
     case 'wb-reset': return { ...state, wb: createHandsOnState().wb };
 
     case 'opt-laser': return optics({ laserOn: !o.laserOn, feedback: feedback('info', o.laserOn ? '光源已关闭，已保存的采集图保留。' : '光源已开启。调节旋钮，比较近远光屏上的位置与大小。') });

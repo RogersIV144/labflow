@@ -89,12 +89,33 @@ describe('hands-on pipetting and experiment state', () => {
     let state = apply(createHandsOnState(), { type: 'wb-transfer' }, { type: 'wb-detect' }, { type: 'wb-capture' });
     expect(state.wb).toMatchObject({ transferred: false, detected: false, captured: false });
     state = apply(load(), { type: 'wb-lid' }, { type: 'wb-run' }, { type: 'wb-tick', delta: 1 }, { type: 'wb-transfer' }, { type: 'wb-capture' });
+    expect(state.wb).toMatchObject({ transferred: false, detected: false, captured: false, feedback: { tone: 'warning' } });
+    state = apply(state, { type: 'wb-membrane', side: 'anode' }, { type: 'wb-transfer' }, { type: 'wb-capture' });
     expect(state.wb).toMatchObject({ transferred: true, detected: false, captured: false });
     state = apply(state, { type: 'wb-detect' }, { type: 'wb-capture' });
+    expect(state.wb).toMatchObject({ detected: false, captured: false, feedback: { tone: 'warning' } });
+    state = apply(state, { type: 'wb-detect-first', first: 'block' }, { type: 'wb-detect' }, { type: 'wb-capture' });
     expect(state.wb).toMatchObject({ detected: true, captured: true });
     state = apply(state, { type: 'wb-exposure', value: 95 }, { type: 'wb-capture' });
     expect(state.wb).toMatchObject({ exposure: 95, captured: true, feedback: { tone: 'warning' } });
     expect(handsOnReducer(state, { type: 'wb-exposure', value: 40 }).wb.captured).toBe(false);
+  });
+
+  it('rejects a membrane on the cathode side and explains why it cannot receive protein', () => {
+    let state = apply(load(), { type: 'wb-lid' }, { type: 'wb-run' }, { type: 'wb-tick', delta: 1 }, { type: 'wb-membrane', side: 'cathode' });
+    expect(state.wb).toMatchObject({ membraneSide: 'cathode', transferred: false, feedback: { tone: 'warning' } });
+    state = apply(state, { type: 'wb-transfer' });
+    expect(state.wb).toMatchObject({ transferred: false, feedback: { tone: 'warning' } });
+    state = apply(state, { type: 'wb-membrane', side: 'anode' }, { type: 'wb-transfer' });
+    expect(state.wb).toMatchObject({ transferred: true, feedback: { tone: 'success' } });
+  });
+
+  it('blocks immunodetection that starts with the primary antibody', () => {
+    let state = apply(load(), { type: 'wb-lid' }, { type: 'wb-run' }, { type: 'wb-tick', delta: 1 }, { type: 'wb-membrane', side: 'anode' }, { type: 'wb-transfer' });
+    state = apply(state, { type: 'wb-detect-first', first: 'primary' }, { type: 'wb-detect' });
+    expect(state.wb).toMatchObject({ detectFirst: 'primary', detected: false, feedback: { tone: 'warning' } });
+    state = apply(state, { type: 'wb-detect-first', first: 'block' }, { type: 'wb-detect' });
+    expect(state.wb).toMatchObject({ detected: true, feedback: { tone: 'success' } });
   });
 });
 

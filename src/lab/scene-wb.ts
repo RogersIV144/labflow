@@ -396,7 +396,8 @@ export function buildWB(): Model {
       transferRedLead(transferLid.position.y + .17); transferBlackLead(transferLid.position.y + .17);
       transferBands.visible = transferParticles.visible = false; loadedMembrane.visible = hand.transferred;
       membraneBands.forEach((band, i) => { band.visible = hand.lanes[Math.floor(i / 3)] > 0; (band.material as THREE.MeshStandardMaterial).opacity = .2 + .8 * hand.lanes[Math.floor(i / 3)] / 30; });
-      (layerSurfaces[3].material as THREE.MeshStandardMaterial).color.setHex(hand.transferred ? 0xc4dace : 0xf0efdf);
+      // The membrane layer carries the learner's choice: red while it sits on the cathode side.
+      (layerSurfaces[3].material as THREE.MeshStandardMaterial).color.setHex(hand.transferred ? 0xc4dace : hand.membraneSide === 'cathode' ? 0xd9958a : hand.membraneSide === 'anode' ? 0xd8e6c9 : 0xf0efdf);
       // Unrelated equipment stays idle; changing lessons never fabricates samples.
       lid.rotation.x = THREE.MathUtils.damp(lid.rotation.x, -1.25, 6, dt); rotorCover.visible = separated.visible = false;
       warmTubes.forEach(t => { t.group.visible = false; }); shaker.rotation.z = 0; fluid.visible = hand.transferred;

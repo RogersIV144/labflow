@@ -53,10 +53,14 @@ export default function HandsOnPanel({ optical, state, stepId, send, navigate }:
         <button className="operation-next" onClick={() => { setTask(2); navigate('wb-transfer', 'transfer'); }}>前往转膜 <ArrowRight size={14}/></button>
       </>}
       {task === 2 && <>
-        <div className="transfer-order"><span>阴极 −</span><strong>凝胶 → 膜</strong><span>阳极 +</span></div>
-        <p className="control-note">检查展开的夹层，膜应位于凝胶的阳极侧。启动后夹层合拢，已分离的条带转移到膜上。</p>
+        <h4 className="control-label">膜放在凝胶的哪一侧？</h4>
+        <div className="control-pair"><button aria-pressed={state.wb.membraneSide === 'anode'} onClick={() => send({ type: 'wb-membrane', side: 'anode' })}>阳极侧 +</button><button aria-pressed={state.wb.membraneSide === 'cathode'} onClick={() => send({ type: 'wb-membrane', side: 'cathode' })}>阴极侧 −</button></div>
+        <p className="control-note">展开夹层可以看清每一层的位置。先想清楚蛋白在电场里往哪个方向走，再决定膜放在哪一侧。</p>
+        {state.wb.transferred && <div className="transfer-order"><span>阴极 −</span><strong>凝胶 → 膜</strong><span>阳极 +</span></div>}
         <button className="operation-primary" onClick={() => send({ type: 'wb-transfer' })}>{state.wb.transferred ? <Check size={16}/> : <ArrowRight size={16}/>} {state.wb.transferred ? '已转移到膜' : '合拢并完成转膜示意'}</button>
-        <div className="detection-check"><strong>成像之前，还有免疫检测</strong><p>封闭 → 一抗 → 洗膜 → 二抗 → 再洗膜。可切回「观看演示」逐步学习，本练习将这一段合并确认。</p><button onClick={() => send({ type: 'wb-detect' })}>{state.wb.detected ? '✓ 免疫检测示意已完成' : '完成免疫检测示意'}</button></div>
+        <div className="detection-check"><strong>成像之前，还有免疫检测</strong><p>第一步该做什么？封闭与一抗的先后不能互换。可切回「观看演示」逐步学习，本练习把中间几步合并确认。</p>
+          <div className="control-pair"><button aria-pressed={state.wb.detectFirst === 'block'} onClick={() => send({ type: 'wb-detect-first', first: 'block' })}>先封闭</button><button aria-pressed={state.wb.detectFirst === 'primary'} onClick={() => send({ type: 'wb-detect-first', first: 'primary' })}>先上一抗</button></div>
+          <button onClick={() => send({ type: 'wb-detect' })}>{state.wb.detected ? '✓ 免疫检测示意已完成' : '完成免疫检测示意'}</button></div>
         <button className="operation-next" onClick={() => { setTask(3); navigate('wb-image', 'imager'); }}>前往成像 <ArrowRight size={14}/></button>
       </>}
       {task === 3 && <>
@@ -64,7 +68,7 @@ export default function HandsOnPanel({ optical, state, stepId, send, navigate }:
         <p className="exposure-quality">{state.wb.exposure > 75 ? '高曝光 · 强信号可能饱和' : state.wb.exposure < 20 ? '低曝光 · 弱信号可能不易观察' : '中等曝光 · 比较泳道差异'}</p>
         <button className="operation-primary" onClick={() => send({ type: 'wb-capture' })}><ScanLine size={16}/> 采集当前曝光</button>
         {state.wb.captured ? <GelResult state={state.wb} blot/> : <div className="capture-empty">{state.wb.detected ? '调好曝光后点击采集' : '等待转膜与免疫检测完成'}</div>}
-        <p className="control-note">图像使用你实际加入各泳道的量。调整曝光后需重新采集；这是合成示意，不是浓度测定或表达量结论。</p>
+        <p className="control-note">图像使用你实际加入各泳道的量；下方那条是内参条带，它随上样量一起变化。调整曝光后需重新采集；这是合成示意，不是浓度测定或表达量结论。</p>
       </>}
     </>}
     <p className="session-note">切换步骤与演示模式会保留操作；刷新或离开本实验后重置。不计入回忆训练成绩。</p>
@@ -76,10 +80,25 @@ function LaneSelector({ state, send }: { state: WBState; send: Props['send'] }) 
 }
 
 function GelResult({ state, blot = false }: { state: WBState; blot?: boolean }) {
-  return <figure className={`manual-gel ${blot ? 'blot' : ''}`}><svg viewBox="0 0 240 150" role="img" aria-label={blot ? '按实际加样量生成的合成条带' : '实时电泳迁移示意'}>
+  return <figure className={`manual-gel ${blot ? 'blot' : ''}`}><svg viewBox="0 0 240 150" role="img" aria-label={blot ? '按实际加样量生成的合成条带，下方为内参' : '实时电泳迁移示意'}>
     <rect width="240" height="150" rx="8" fill={blot ? '#e4e6df' : '#162e3c'}/>
-    {state.lanes.map((amount, lane) => <g key={lane}><text x={45 + lane * 50} y="17" textAnchor="middle" fill={blot ? '#49564f' : '#abc6cf'} fontSize="10">{lane + 1}</text><path d={`M${27 + lane * 50} 24h36v108h-36Z`} fill={blot ? '#d9ddd7' : '#204653'} opacity=".7"/>{amount > 0 && [0, 1, 2].map((band) => <rect key={band} x={32 + lane * 50} y={29 + (blot ? 1 : state.progress) * (25 + band * 32)} width={26} height={blot && state.exposure > 75 ? 7 : 4} rx="1" fill={blot ? '#273c38' : ['#73c6e9', '#9dd5bd', '#bcb6db'][band]} opacity={Math.min(1, amount / 25 * (blot ? state.exposure / 45 : 1) * (1 - band * .14))}/>)}</g>)}
-  </svg><figcaption>{blot ? '已采集 · 合成信号' : state.progress ? '实时迁移 · 相同样品，不同加样量' : '等待通电 · 加样保留在孔位'}</figcaption></figure>;
+    {state.lanes.map((amount, lane) => <g key={lane}><text x={45 + lane * 50} y="17" textAnchor="middle" fill={blot ? '#49564f' : '#abc6cf'} fontSize="10">{lane + 1}</text><path d={`M${27 + lane * 50} 24h36v108h-36Z`} fill={blot ? '#d9ddd7' : '#204653'} opacity=".7"/>{amount > 0 && [0, 1, 2].map((band) => {
+      // A saturated band is flat-topped: its grey no longer tracks protein amount.
+      const saturated = blot && state.exposure > 75;
+      const y = 29 + (blot ? 1 : state.progress) * (25 + band * 32);
+      return <g key={band}>{saturated && <rect x={28 + lane * 50} y={y - 3} width={34} height={15} rx="3" fill="#ffffff" opacity=".22"/>}<rect x={32 + lane * 50} y={y} width={26} height={saturated ? 9 : 4} rx="1" fill={saturated ? '#ffffff' : blot ? '#273c38' : ['#73c6e9', '#9dd5bd', '#bcb6db'][band]} opacity={saturated ? .95 : Math.min(1, amount / 25 * (blot ? state.exposure / 45 : 1) * (1 - band * .14))}/></g>;
+    })}</g>)}
+    {blot && <>
+      <text x="3" y="131" fill="#49564f" fontSize="7.5">内参</text>
+      {state.lanes.map((amount, lane) => {
+        if (amount <= 0) return null;
+        // The loading control comes from the same sample, so it tracks loading volume, not biology.
+        const saturated = state.exposure > 75;
+        const opacity = saturated ? .95 : Math.min(1, amount / 25 * state.exposure / 45);
+        return <g key={`control-${lane}`}>{saturated && <rect x={28 + lane * 50} y={124} width={34} height={11} rx="3" fill="#ffffff" opacity=".22"/>}<rect x={32 + lane * 50} y={127} width={26} height={saturated ? 6 : 4} rx="1" fill={saturated ? '#ffffff' : '#273c38'} opacity={opacity}/></g>;
+      })}
+    </>}
+  </svg><figcaption>{blot ? (state.exposure > 75 ? '已采集 · 合成信号（下方为内参）· 条带已饱和，不能用于定量比较' : '已采集 · 合成信号（下方为内参）') : state.progress ? '实时迁移 · 相同样品，不同加样量' : '等待通电 · 加样保留在孔位'}</figcaption></figure>;
 }
 
 export function ControlRange({ label, value, min, max, unit, onChange }: { label: string; value: number; min: number; max: number; unit: string; onChange: (value: number) => void }) {
