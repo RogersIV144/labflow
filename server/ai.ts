@@ -122,10 +122,31 @@ export class HttpCompatibleBridge implements TutorBridge {
   }
 
   async models(): Promise<TutorModel[]> {
-    const { model } = this.config();
-    // Compatible providers have no uniform model metadata endpoint. The configured
-    // model is always available for explicit selection; inference verifies access.
-    return [{ model, isDefault: true, supportedReasoningEfforts: [] }];
+    const { base, model } = this.config();
+    // Try the common OpenAI-compatible GET /models listing first; keep the
+    // configured model available even when the provider offers no listing.
+    try {
+      const response = await fetch(new URL('models', base), {
+        signal: AbortSignal.timeout(5000),
+        ...(this.env.LABFLOW_API_KEY ? { headers: { Authorization: `Bearer ${this.env.LABFLOW_API_KEY}` } } : {}),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const list = await response.json();
+      const entries = Array.isArray(list?.data) ? list.data : [];
+      const models = entries.filter((item: any) => item && typeof item.id === 'string' && item.id.trim()).map((item: any) => ({
+        model: item.id.trim(),
+        displayName: typeof item.name === 'string' && item.name.trim() ? item.name : undefined,
+        isDefault: item.id.trim() === model,
+        supportedReasoningEfforts: [],
+      }));
+      if (!models.length) throw new Error('模型列表为空');
+      if (!models.some((item: TutorModel) => item.model === model)) models.unshift({ model, isDefault: true, supportedReasoningEfforts: [] });
+      return models;
+    } catch {
+      // Compatible providers have no uniform model metadata endpoint. The configured
+      // model is always available for explicit selection; inference verifies access.
+      return [{ model, isDefault: true, supportedReasoningEfforts: [] }];
+    }
   }
 
   async run(prompt: string, schema: object, signal?: AbortSignal, options?: RunOptions): Promise<unknown> {

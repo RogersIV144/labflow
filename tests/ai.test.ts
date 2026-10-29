@@ -49,11 +49,27 @@ describe('HTTP compatible tutor bridge', () => {
     const bridge = new HttpCompatibleBridge({ LABFLOW_API_BASE_URL: base, LABFLOW_MODEL: 'configured', LABFLOW_API_KEY: 'mock-secret' });
     expect(await bridge.status()).toMatchObject({ available: true, backend: 'openai-compatible', model: 'configured' });
     expect(await bridge.models()).toEqual([{ model: 'configured', isDefault: true, supportedReasoningEfforts: [] }]);
+    expect(requests).toHaveLength(1); // 模型列表探测失败后回退，仅此一次探测
+    expect(requests[0].path).toBe('/v1/models');
     expect(await bridge.run('evaluate', schema, undefined, { model: 'selected', effort: 'medium' })).toEqual({ verdict: 'correct' });
-    expect(requests).toHaveLength(1);
-    expect(requests[0].path).toBe('/v1/chat/completions');
-    expect(requests[0].headers.authorization).toBe('Bearer mock-secret');
-    expect(requests[0].body).toMatchObject({ model: 'selected', reasoning_effort: 'medium', response_format: { type: 'json_schema', json_schema: { strict: true, schema } } });
+    expect(requests).toHaveLength(2);
+    expect(requests[1].path).toBe('/v1/chat/completions');
+    expect(requests[1].headers.authorization).toBe('Bearer mock-secret');
+    expect(requests[1].body).toMatchObject({ model: 'selected', reasoning_effort: 'medium', response_format: { type: 'json_schema', json_schema: { strict: true, schema } } });
+  });
+
+  it('lists provider models when the endpoint offers them', async () => {
+    handler = (path, _body, response) => {
+      response.setHeader('Content-Type', 'application/json');
+      if (path === '/v1/models') { response.end(JSON.stringify({ data: [{ id: 'listed' }, { id: 'configured', name: 'Configured' }] })); return; }
+      response.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: '{"verdict":"correct"}' } }] }));
+    };
+    const bridge = new HttpCompatibleBridge({ LABFLOW_API_BASE_URL: base, LABFLOW_MODEL: 'configured' });
+    expect(await bridge.models()).toEqual([
+      { model: 'listed', displayName: undefined, isDefault: false, supportedReasoningEfforts: [] },
+      { model: 'configured', displayName: 'Configured', isDefault: true, supportedReasoningEfforts: [] },
+    ]);
+    expect(requests[0].path).toBe('/v1/models');
   });
 
   it('supports Responses style and rejects malformed structured output', async () => {
