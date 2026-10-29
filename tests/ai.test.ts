@@ -105,4 +105,16 @@ describe('HTTP compatible tutor bridge', () => {
     expect(await bridge.status()).toMatchObject({ available: false, backend: 'openai-compatible' });
     await expect(bridge.run('evaluate', schema)).rejects.toThrow('HTTPS');
   });
+
+  it('uses the per-request deadline, reports degradation, and recovers after success', async () => {
+    const bridge = new HttpCompatibleBridge({ LABFLOW_API_BASE_URL: base, LABFLOW_MODEL: 'mock' });
+    handler = () => {};
+    const started = Date.now();
+    await expect(bridge.run('evaluate', schema, undefined, { timeoutMs: 40 })).rejects.toThrow('用时较长');
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(await bridge.status()).toMatchObject({ available: true, degraded: true, lastFailure: { message: '检查用时较长，请重试' } });
+    handler = (_path, _body, response) => response.end(JSON.stringify({ choices: [{ message: { content: '{"verdict":"correct"}' } }] }));
+    expect(await bridge.run('retry', schema)).toEqual({ verdict: 'correct' });
+    expect(await bridge.status()).toMatchObject({ available: true, degraded: false, message: 'HTTP 模型最近一次请求成功' });
+  });
 });

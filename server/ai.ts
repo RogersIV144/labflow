@@ -96,6 +96,8 @@ function configuredBaseUrl(raw: string | undefined): URL {
 }
 
 export class HttpCompatibleBridge implements TutorBridge {
+  private lastFailure?: { at: string; message: string };
+  private verified = false;
   constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
 
   private config() {
@@ -110,7 +112,10 @@ export class HttpCompatibleBridge implements TutorBridge {
   async status(): Promise<TutorStatus> {
     try {
       const { model } = this.config();
-      return { available: true, backend: 'openai-compatible', model, message: 'HTTP 模型已配置，连接将在首次请求时验证' };
+      return { available: true, degraded: Boolean(this.lastFailure), lastFailure: this.lastFailure,
+        backend: 'openai-compatible', model, message: this.lastFailure
+          ? `HTTP 模型最近一次请求失败：${this.lastFailure.message}`
+          : this.verified ? 'HTTP 模型最近一次请求成功' : 'HTTP 模型已配置，连接将在首次请求时验证' };
     } catch (error) {
       return { available: false, backend: 'openai-compatible', message: (error as Error).message };
     }
@@ -137,7 +142,7 @@ export class HttpCompatibleBridge implements TutorBridge {
     const url = new URL(style === 'responses' ? 'responses' : 'chat/completions', base);
     const controller = new AbortController();
     let timedOut = false;
-    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 120_000);
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, options?.timeoutMs ?? (Number(this.env.LABFLOW_TURN_TIMEOUT_MS) || 120_000));
     const cancel = () => controller.abort();
     signal?.addEventListener('abort', cancel, { once: true });
     try {
@@ -163,12 +168,16 @@ export class HttpCompatibleBridge implements TutorBridge {
       try { parsed = JSON.parse(content); } catch { throw new Error('HTTP 模型返回内容不是有效 JSON'); }
       if (!matchesSchema(parsed, format.schema)) throw new Error('HTTP 模型返回内容未通过结构校验');
       if (signal?.aborted) throw new Error('已取消');
+      this.lastFailure = undefined;
+      this.verified = true;
       return parsed;
     } catch (error) {
-      if (timedOut) throw new Error('检查用时较长，请重试');
       if (signal?.aborted) throw new Error('已取消');
-      if (error instanceof Error && /^(HTTP 模型|检查用时|已取消)/.test(error.message)) throw error;
-      throw new Error('HTTP 模型连接失败，请检查已配置的服务地址');
+      const message = timedOut ? '检查用时较长，请重试'
+        : error instanceof Error && /^(HTTP 模型|检查用时)/.test(error.message) ? error.message
+        : 'HTTP 模型连接失败，请检查已配置的服务地址';
+      this.lastFailure = { at: new Date().toISOString(), message };
+      throw new Error(message);
     } finally {
       clearTimeout(timeout);
       signal?.removeEventListener('abort', cancel);

@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-29",
+  "model": "gpt-6.1-sol",
+  "effort": "low",
+  "measurement": "POST check to terminal job result; polling every 400 ms",
+  "results": [
+    {
+      "case": "A-reference-labels",
+      "labels": [
+        "封闭",
+        "一抗孵育",
+        "洗膜",
+        "二抗孵育",
+        "洗膜"
+      ],
+      "text": "",
+      "graph": "consecutive directed edges in label order",
+      "elapsedSeconds": 0.41,
+      "verdict": "correct",
+      "source": "rule",
+      "degraded": false
+    },
+    {
+      "case": "B-own-wording",
+      "labels": [
+        "封闭液封闭",
+        "加一抗",
+        "洗膜",
+        "加二抗",
+        "洗膜"
+      ],
+      "text": "",
+      "graph": "consecutive directed edges in label order",
+      "elapsedSeconds": 10.24,
+      "verdict": "correct",
+      "source": "codex",
+      "degraded": false
+    },
+    {
+      "case": "C-interpretation-own-wording",
+      "labels": [
+        "确认条带是不是目标蛋白",
+        "检查是否过曝",
+        "用内参归一化",
+        "看有没有独立重复",
+        "写结论时说明边界"
+      ],
+      "text": "",
+      "graph": "consecutive directed edges in label order",
+      "elapsedSeconds": 8.17,
+      "verdict": "correct",
+      "source": "codex",
+      "degraded": false
+    },
+    {
+      "case": "D-incorrect-background",
+      "labels": [],
+      "text": "背景高就是曝光时间不够，多曝一会儿就好了，不用查别的。",
+      "graph": null,
+      "elapsedSeconds": 9.0,
+      "verdict": "incorrect",
+      "source": "codex",
+      "degraded": false
+    }
+  ]
+}

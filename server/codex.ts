@@ -118,6 +118,19 @@ export class CodexBridge {
   }
 
   async run(prompt: string, schema: object, signal?: AbortSignal, options?: { model?: string; effort?: string; timeoutMs?: number }): Promise<any> {
+    try {
+      const result = await this.runTurn(prompt, schema, signal, options);
+      this.lastFailure = undefined;
+      return result;
+    } catch (error) {
+      if (!signal?.aborted && (error as Error).message !== '已取消') {
+        this.lastFailure = { at: new Date().toISOString(), message: (error as Error).message };
+      }
+      throw error;
+    }
+  }
+
+  private async runTurn(prompt: string, schema: object, signal?: AbortSignal, options?: { model?: string; effort?: string; timeoutMs?: number }): Promise<any> {
     await this.start();
     if (signal?.aborted) throw new Error('已取消');
     const { thread } = await this.request('thread/start', {
@@ -156,9 +169,6 @@ export class CodexBridge {
       finish = (error, value) => {
         if (settled) return;
         settled = true;
-        // Status must not keep claiming a healthy connection after a turn failed.
-        if (error && error.message !== '已取消') this.lastFailure = { at: new Date().toISOString(), message: error.message };
-        else if (!error) this.lastFailure = undefined;
         clearTimeout(timer);
         this.events.off('notification', notification);
         this.events.off('disconnected', disconnected);

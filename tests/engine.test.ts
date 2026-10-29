@@ -21,6 +21,17 @@ describe('training disclosure boundary',()=>{
     const result=publicFeedback(task,{verdict:'incorrect',detail:'SECRET ERROR NODE AND REASON',source:'codex'},'snapshot','now');
     expect(result.message).toBe('有错误');expect(JSON.stringify(result)).not.toContain('SECRET');expect(Object.keys(result)).not.toContain('detail');
   });
+  it('explains an unresolved check without exposing a diagnosis or giving independent credit',async()=>{
+    const directory=await mkdtemp(join(tmpdir(),'labflow-degraded-'));
+    try {
+      const engine=new Engine(directory);await engine.init();const task=await engine.newTask('wb','rebuild',true);
+      const feedback=await engine.record(task.id,{verdict:'uncertain',detail:'PRIVATE ANSWER',source:'rule',degraded:true},'s','now');
+      expect(feedback).toMatchObject({verdict:'uncertain',degraded:true,assisted:false,helpLevel:0});
+      expect(feedback.message).toContain('AI 未完成判定');
+      expect(JSON.stringify(feedback)).not.toContain('PRIVATE');
+      expect(engine.progress()[`wb:${seedCases[0].revision}:wb-antibody:rebuild`].independent).toEqual([]);
+    }finally{await rm(directory,{recursive:true,force:true});}
+  });
 });
 describe('graph semantics',()=>{
   it('ignores layout coordinates, distinguishes repeated washing nodes, and checks directed order',()=>{
