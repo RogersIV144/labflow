@@ -1,12 +1,108 @@
-# LabFlow
+<div align="center">
+  <img src="docs/assets/hero.svg" width="100%" alt="LabFlow — Beyond the Shortcut" />
+</div>
 
-把实验文档变成可逐层展开、主动回忆和实操重放的本地流程图。INFO5000 小组演示原型，优先支持笔记本电脑。
+<div align="center">
 
-![LabFlow 学习界面](docs/demo-learning.jpg)
+<b>Node.js 22+</b> &nbsp;·&nbsp; <b>pnpm</b> &nbsp;·&nbsp; <b>92 automated tests</b> &nbsp;·&nbsp; <b>Bilingual 中 / EN</b> &nbsp;·&nbsp; <b>Local-first 本地优先</b>
 
-## 启动
+</div>
 
-需要 Node.js 22+ 和 pnpm。图形操作、Replay 和可确定的客观题检查无需 AI 登录；聊天、主观判答和 AI 出题可使用自己的 Codex，或显式配置 HTTP 模型服务。
+> **Beyond the Shortcut: Restoring the Authentic Learning Path for student of AI Era**
+>
+> **不止于捷径：为 AI 时代的学习者找回真实的学习路径**
+
+| 中文 | English |
+| --- | --- |
+| 把一份实验文档，变成可逐层展开、主动回忆、按需求助、实操重放的**本地学习流程**。AI 随时可问，但回忆与推理始终由学习者完成。 | Turn a lab handout into a **local, layered workflow** of progressive study, active recall, help-on-request and stepwise Replay. AI is always available — but the learner keeps the recall and the reasoning. |
+
+---
+
+## ▸ 演示影片 / Watch the film
+
+[![LabFlow 双语产品演示](docs/assets/video-poster.png)](media/LabFlow-Product-Demo-EN-v2-Bilingual.mp4)
+
+<div align="center">
+
+<a href="media/LabFlow-Product-Demo-EN-v2-Bilingual.mp4">▶ 播放双语视频 / Play MP4</a> &nbsp;│&nbsp; <a href="media/LabFlow-Product-Demo-EN-v2-Bilingual.srt">下载外挂字幕 / SRT</a> &nbsp;│&nbsp; <a href="docs/showcase.html">完整版介绍页 / Full showcase（下载后本地打开）</a>
+
+</div>
+
+| ◆ 规格 / Spec | 值 / Value |
+| --- | --- |
+| 时长 / Runtime | **02:11** · 18 shots / 18 个镜头 |
+| 字幕 / Subtitles | **EN + 中文** 双语两行，英文原文在上、中文在下 |
+| 画面 / Footage | 100% 真实产品操作画面，Recordly 原生光标与自动缩放，无标题卡 / 无演示稿 |
+| 配音 / Voice | index-tts2 · Linette English · 原速 untreated（`atempo = 1.0`） |
+| 制作 / Production | Recordly 原生光标 + 自动缩放 · index-tts2 原速配音 ·  bilingual burn-in；[早期介绍片制作记录](docs/demo-video-production-2026-11.md) |
+
+---
+
+## ▸ 我们拒绝的捷径 / The shortcut we refuse
+
+AI 让「得到答案」变得毫无成本。但**答案出现得太早，学习就结束了**。
+AI makes answers free. When the answer arrives too early, learning stops.
+
+| 常见捷径 / Shortcut | 代价 / What it costs | LabFlow 的选择 / Our choice |
+| --- | --- | --- |
+| 一次读完整个流程 / Read the whole protocol at once | 看起来懂了，其实只是认得字 / Recognition mistaken for recall | **渐进披露**：总块 → 阶段 → 步骤，展开才见细节 / Progressive disclosure |
+| 直接问 AI 要步骤 / Ask AI for the steps | 该回忆的内容被直接给出 / The retrieval is done for you | **判定优先，帮助需请求**：只给对错，提示要一级级点开 / Verdict first, graduated help on request |
+| 把提示切得极细 / Micro-hints at every turn | 推理路径被替你选好 / The reasoning path is pre-chosen | **宽泛 → 具体 → 答案**，另设详细点评 / Broad → specific → answer, plus detailed critique |
+| 只看文字实验步骤 / Text-only procedure | 认得名称，认不得仪器 / Names without equipment | **三维实验台 + 观看演示 + 动手操作 + Replay** / 3D bench, demo, hands-on, Replay |
+
+---
+
+## ▸ 学习闭环 / The learning loop
+
+<img src="docs/assets/pipeline.svg" width="100%" alt="Expand → Recall → Assess → Replay" />
+
+| 阶段 / Stage | 中文 | English |
+| --- | --- | --- |
+| **01 Expand** | 从一个总块展开到阶段与步骤；每个节点给出操作、原因、检查点与来源 | One root becomes stages and steps; each node carries action, rationale, checkpoint and source |
+| **02 Recall** | 细节补全 → 顺序重建 → 整段空白重建；草稿各自保留 | Detail fill → order reconstruction → blank-canvas rebuild, with separate drafts |
+| **03 Assess** | 默认只给判定；宽泛提示、具体定位、答案与详细点评逐级请求 | Verdict only by default; broad hint, specific cause, answer and critique are requested, not pushed |
+| **04 Replay** | 实验现场逐步导航，笔记与图片挂在当前节点；现场观察可回写参考 | Stepwise navigation at the bench, notes and images on the current node, observations feed reference revisions |
+
+> **贯穿始终的是同一份版本化实验参考** — 旧题沿用旧版快照，判答结果绑定当次提交。
+> **One shared, versioned protocol reference throughout** — old tasks keep their original snapshot and every verdict is tied to the submitted answer.
+
+---
+
+## ▸ 重点与优势 / What makes it different
+
+| | 中文 | English |
+| --- | --- | --- |
+| ◆ | **帮助不接管学习**：求助会标记该回合为 assisted，直到学习者主动开启新的独立回合 | **Help never takes over**: a request marks the attempt assisted until a fresh independent round begins |
+| ◆ | **两套案例，一个机制**：WB 考操作顺序与结果解读；JTC 把光轴调节接到 OPTILAB 的真实复数 FFT 求解 | **One design, two disciplines**: WB for order and interpretation; JTC for alignment with real Fourier optics |
+| ◆ | **本地优先**：网页、知识库、笔记与个人数据都在本机；客观名称/别名、连线、配图优先本地判定 | **Local-first**: web app, reference, notes and drafts stay on the machine; deterministic checks run locally |
+| ◆ | **AI 不可用也不假装**：受控超时保留作答并明确标注降级，不伪造模型评价 | **Honest degradation**: a timeout preserves the answer and labels the fallback instead of inventing a verdict |
+| ◆ | **领域反馈变成界面决策**：转膜方向、封闭与一抗先后从「确认」改为「判断」，选错显示后果 | **Domain review becomes UI**: transfer orientation and blocking order became judgement tasks with visible consequences |
+| ◆ | **可被外部 agent 接入**：MCP stdio 暴露上下文、检查、提示、笔记、图片与参考修订 | **Agent-ready**: an MCP interface exposes context, checks, hints, notes, images and reference revisions |
+
+| **24** nodes / 节点 | **19** Replay steps / 步 | **7** scenario questions / 情境题 | **5** task types / 题型 | **92** tests passing / 测试通过 | **2** cases / 案例 | **4 / 5** user rating / 用户评分 |
+| --- | --- | --- | --- | --- | --- | --- |
+
+---
+
+## ▸ 研究依据 / Evidence, not adjectives
+
+报告不只描述功能，也记录了**哪里成立、哪里还没被验证**。
+The report records what held up **and what has not been verified yet**.
+
+| 已支持 / Supported | 尚未验证 / Not yet verified |
+| --- | --- |
+| 渐进披露 + 引导填空带来**真实回忆**：第一次需要 AI 解释每个概念的学习者，第二次无需重学即可回忆步骤顺序、仪器与操作 / Progressive disclosure and guided fill-in produced real recall on second use | **解释层最薄弱**：能排列与重建步骤，却说不清原理；检查器量的是措辞，不是理解 / Explanation remains the weak point; the checker measures wording, not understanding |
+| 领域同伴走查把内容问题转成界面决策 / Domain walkthrough findings became interface decisions | **求助后是否回到独立练习**，本轮没有数据 / Whether learners return to independent work after an assisted round is untested |
+| 详细点评补上了判定给不了的理由；同一答案由规则超时「不确定」变为 10.2s 判对 / Requested critique supplied the reasons a verdict could not | 空白重建被判为对首次学习者过早；图片附件与参考修订存在**可发现性**问题 / Blank reconstruction felt premature; some features were never discovered |
+
+**完整双语摘要** → [`docs/report-summary.md`](docs/report-summary.md) &nbsp;│&nbsp; **原报告 PDF** → [`docs/LabFlow-report.pdf`](docs/LabFlow-report.pdf)
+
+---
+
+## ▸ 快速开始 / Quick start
+
+需要 Node.js 22+ 与 pnpm。图形操作、Replay 与可确定的客观题检查**无需 AI 登录**；聊天、主观判答与 AI 出题可接入自己的 Codex，或显式配置 HTTP 模型服务。
+Node.js 22+ and pnpm. Scene interaction, Replay and deterministic checks need **no AI sign-in**; chat, subjective judgement and generated questions use a configured backend.
 
 ```sh
 pnpm install
@@ -14,77 +110,58 @@ pnpm build
 pnpm start
 ```
 
-打开 <http://127.0.0.1:4317/>。Mac 完成安装和构建后，可双击 `start-demo.command`。开发时使用 `pnpm dev`。
-
-网页和知识库在本地；请求 AI 时，相关参考内容和本次作答会交给所配置的服务。客观名称/别名、连线与配图优先本地判定；不能本地确定的语义交给模型。AI 不可用时保留本地的「有错误 / 暂无法判断」，明确标注规则来源，不伪造 AI 评价。
-
-## 发给队友试用
-
-运行 `pnpm package:share` 生成 `releases/LabFlow-0.3.0-team.zip`。队友只需 Node.js 22+，完整解压后使用 Mac/Windows 启动脚本，不需要安装项目依赖或构建。包内含启动说明、[3D 人工测试指南](docs/manual-testing-0.3.0.md)、AI 接入文档和可连接自己 harness 的 MCP 接口。
-
-分享包只包含预置案例和编译产物，不包含 `.labflow`、账户凭据或个人笔记。请转发原始 ZIP，而不是使用后的目录。
-
-## 五分钟演示
-
-「学习」和 Replay 提供「实验场景 / 流程图」切换：WB 19 步、JTC 8 步可在三维实验台中逐项演示。拖动旋转、滚轮缩放，从阶段栏进入具体步骤，使用「当前操作」自动构图，或「仅看当前器材」排除遮挡；支持俯视、调速、暂停、逐项回看、转膜夹层与光轴调整。「流程与笔记」回到对应参考节点，「回忆这一阶段」进入对应练习。场景和二维读出均为教学合成示意，不计入独立完成次数。使用方法、截图与验证边界见 [交互实验场景说明](docs/interactive-lab-scenes.md)。
-
-1. 切到「流程图」，在 Western Blot 总块点击「展开学习」，再展开「封闭与抗体孵育」。点节点查看操作、原因、检查点和来源。
-2. 进入「回忆训练」。补全隐藏名称，提交检查；默认只显示正确、有错误或暂无法判断。
-3. 按需请求宽泛提示、再具体一点、完整答案。二级提示只聚焦一处。帮助状态会跨同一参考版本的题型和换题保留。
-4. 在顺序重建中从连接点连线。整段重建从空白开始，不预留标准数量的节点。配图可拖动，或先点图片再点目标流程块；一张卡可多次使用。
-5. 进入 Replay，用上一步、下一步或下拉跳转辅助现场查看。记录个人笔记，或修订参考并保存新版本；图片可附在任何层级。
-6. 切到联合傅里叶相关，演示同一机制复用于另一类实验。JTC 的「观看演示」已接到 [OPTILAB](docs/optilab-integration.md)：GPU 复数 FFT 真解联合功率谱与相关输出，针孔偏心、光阑截断、离焦都进入计算，右侧给的是实测判据而不是示意图；「动手操作」留在示意台上先走一遍器材与顺序。窄视图按「放大实验场景」拿完整调节台。
-
-阶段和题型分别保留草稿。「换一题」切换掩码或轮换情境；「AI 出题」可选择掩码或生成经过依据核对的情境变式，失败明确回退预置题。默认只判对错；「详细点评与修订」仅在主动点击后显示原句、类别、修订建议和来源，并计入辅助练习。生成内容仍需要人的内容审阅，核对不等于保证没有幻觉。
-
-笔记本上可用「展开画布」获得更多操作空间。异常题的「再具体一点」只定位最近已检查提交中的一处，重复请求保持同一个点；修改答案后需重新检查。明确提问封闭液与一抗稀释液、归一化、重复、线性范围或膜预处理时，可获得限定概念的解释；超出已支持范围时明确说明限制。「AI 出题」保留当前情境，评分标准由服务器保留。
-
-「收起帮助，开始新一轮独立回忆」才明确开启新的无资料尝试。两次不同题目的独立完成仅建议进阶，不代表长期保持或实验室操作能力。当前没有延迟测验或真正的掌握度估计。
-
-## 范围
-
-- WB 主例：六阶段概览，24 个节点、19 步 Replay、7 道情境题；可练整体、样品、分离/转膜、抗体、结果解读。
-- JTC 辅例：可练整体、光路调节与两次测量；保留原异常题。演示模式由 OPTILAB 子应用提供真实求解（`public/optilab/`），与 LabFlow 步骤双向同步；动手模式仍是示意台。映射与已知边界见 [接入说明](docs/optilab-integration.md)。
-- 支持图内文字、拖动、连线、删除与撤销、配图、异常情境文字作答。
-- 学习/Replay 对话由真实 Codex 回答；回忆训练的帮助受渐进披露规则约束。
-- 参考修订、个人笔记、附件、草稿与进度持久化到 `.labflow/`；不提供历史聊天/实验日志。
-- 图片卡为示意图，不是原始实验照片。原始文档未上传到此仓库。
-- 参考保留原文来源和未决条件。WB 丽春红染色表述冲突不作唯一标准答案；JTC 原文声明有误的图不用于训练。
-
-## 接入已有 agent
-
-`plugin/` 提供 Codex 本地插件包和教学 Skill，`server/mcp.ts` 暴露标准 MCP stdio 工具：读取上下文/参考、检查草稿/读取结果、请求提示、保存笔记、上传图片、提出参考修订。修订建议由网页确认应用。
-
-安装到 harness 之前先启动网页服务。任意支持 MCP 的 harness 可使用：
-
-```json
-{
-  "mcpServers": {
-    "labflow": {
-      "command": "node",
-      "args": ["/absolute/path/to/labflow/plugin/server.mjs"]
-    }
-  }
-}
-```
-
-把示例路径换为本机仓库的绝对路径。插件依赖当前 checkout 的依赖包，暂未制作独立发布包。插件文件已准备，是否安装/启用应以本机 Codex 插件设置为准。
-
-MCP 使用 `.labflow/control-token` 的本机控制令牌，启动时轮换；它不是 GitHub token。服务仅监听回环地址，拒绝跨网站写请求。参考与内部诊断在本机服务端；这是一款自学工具，不是防作弊考试系统。
-
-可选配置：`PORT`、`LABFLOW_DATA_DIR`、`CODEX_BIN`、`LABFLOW_MODEL`。默认模型取本机 Codex 返回的默认模型；不会修改全局模型设置。MCP 另支持 `LABFLOW_URL`、`LABFLOW_PROJECT_DIR`，测试实例需同时传递对应的数据目录。
-
-网页右上角「模型设置」可选择模型，保存到 `.labflow/agent-settings.json`。HTTP 兼容模式使用 `LABFLOW_AI_BACKEND=openai-compatible`、`LABFLOW_API_BASE_URL`、`LABFLOW_MODEL`、可选 `LABFLOW_API_KEY` 与 `LABFLOW_API_STYLE`。支持 Chat Completions / Responses，详见 [接入说明](docs/ai-backends.md)。密钥仅由本机环境变量读取，不写入网页或分享包；`CODEX_BIN` 不能填写 API URL。
-
-升级沿用原 `.labflow` 目录即可；首次升级会保存 `state.before-v0.2.json`，补充新案例内容，保留已有用户修订、笔记、图片与旧题参考快照。旧题继续使用原参考版本，创建新题后才使用新版。详细变更见 [0.3.0 场景优化说明](docs/release-0.3.0.md)、[0.2.1 修复说明](docs/release-0.2.1.md)与 [0.2.0 迭代说明](docs/release-0.2.0.md)。
-
-## 验证
+打开 <http://127.0.0.1:4317/>。开发时用 `pnpm dev`；Mac 完成安装与构建后可双击 `start-demo.command`。
+Open <http://127.0.0.1:4317/>; use `pnpm dev` for development.
 
 ```sh
 pnpm test
-pnpm build
 pnpm test:integration
-pnpm check:codex  # 真实模型请求，消耗当前账号配额
+pnpm check:codex   # 真实模型请求，消耗当前账号配额 / real model call
 ```
 
-集成检查使用临时本地目录，不改学习数据。人工/agent computer-use 结果见 `docs/testing.md`。
+发给队友试用：`pnpm package:share` 生成 `releases/LabFlow-0.3.0-team.zip`，队友只需 Node.js 22+，不需要安装依赖或构建。分享包**不含** `.labflow`、凭据或个人笔记，请转发原始 ZIP。
+For teammates: `pnpm package:share` builds a dependency-free ZIP. It excludes `.labflow`, credentials and personal notes — forward the original ZIP.
+
+---
+
+## ▸ 工程说明 / Engineering notes
+
+- **AI 后端 / Backends**：`Codex` 本地插件，或 `LABFLOW_AI_BACKEND=openai-compatible` + `LABFLOW_API_BASE_URL` / `LABFLOW_MODEL`；支持 Chat Completions 与 Responses，详见 [接入说明](docs/ai-backends.md)。密钥只从本机环境变量读取，不写入网页或分享包。
+- **MCP / Agent harness**：`plugin/` 提供本地插件包，`server/mcp.ts` 暴露标准 MCP stdio 工具；启动时轮换 `.labflow/control-token`，服务只监听回环地址并拒绝跨站写请求。安装到 harness 前请先启动网页服务。
+- **数据 / Data**：参考修订、笔记、附件、草稿与进度持久化到 `.labflow/`；升级沿用原目录，首次升级会保存 `state.before-v0.2.json`。这是一款自学工具，不是防作弊考试系统。
+- **模型设置 / Model settings**：网页右上角选择模型，保存到 `.labflow/agent-settings.json`；不会修改全局模型设置。AI 不可用时保留本地「有错误 / 暂无法判断」并标注规则来源。
+
+<details>
+<summary><b>范围与边界 / Scope &amp; limits</b></summary>
+
+- WB 主例：六阶段、24 节点、19 步 Replay、7 道情境题；JTC 辅例保留原异常题。
+- JTC 演示模式由内嵌 OPTILAB 提供真实求解；动手模式仍是教学示意台。场景与二维读出是教学合成示意，不计入独立完成次数。
+- 图片卡为示意图，不是原始实验照片；原始文档未上传到此仓库。
+- 没有延迟测验，也没有真正的掌握度估计；生成内容仍需人工审阅。
+- 无实体实验场景使用记录；模拟保真度有限，不校验脱离脚本的操作。
+
+</details>
+
+---
+
+## ▸ 文档地图 / Documentation
+
+| 主题 / Topic | 链接 / Link |
+| --- | --- |
+| 双语报告摘要 / Bilingual report summary | [docs/report-summary.md](docs/report-summary.md) |
+| 完整版介绍页 / Full showcase page | [docs/showcase.html](docs/showcase.html) |
+| 早期介绍片制作记录 / Earlier production notes | [docs/demo-video-production-2026-11.md](docs/demo-video-production-2026-11.md) |
+| 交互实验场景 / Interactive lab scenes | [docs/interactive-lab-scenes.md](docs/interactive-lab-scenes.md) |
+| OPTILAB 接入 / OPTILAB integration | [docs/optilab-integration.md](docs/optilab-integration.md) |
+| AI 后端 / AI backends | [docs/ai-backends.md](docs/ai-backends.md) |
+| 人工测试 / Manual testing | [docs/manual-testing-0.3.0.md](docs/manual-testing-0.3.0.md) · [docs/testing.md](docs/testing.md) |
+
+---
+
+<div align="center">
+
+<b>INFH5000 · Group 8</b> &nbsp;│&nbsp; Qihuan ZENG · Yunhan CHEN · Xuanling LUO · Zixin XU &nbsp;│&nbsp; 各 25% / 25% each
+
+<sub>Progressive Workflow Reconstruction with On-Demand AI Guidance for Laboratory Preparation</sub>
+
+</div>

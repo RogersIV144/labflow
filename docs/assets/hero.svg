@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 380" width="1600" height="380" role="img" aria-label="LabFlow — Beyond the Shortcut">
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12332B"/>
+      <stop offset="1" stop-color="#2E7D6B"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.82" cy="0.2" r="0.75">
+      <stop offset="0" stop-color="#2E7D6B" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#2E7D6B" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E8A33D"/>
+      <stop offset="1" stop-color="#E8A33D" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#12332B" stroke-opacity="0.055" stroke-width="1"/>
+    </pattern>
+    <style>
+      .en{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif}
+      .zh{font-family:'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif}
+      .mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace}
+    </style>
+  </defs>
+
+  <rect width="1600" height="380" fill="#F5F4EF"/>
+  <rect width="1600" height="380" fill="url(#grid)"/>
+  <rect width="1600" height="380" fill="url(#glow)"/>
+
+  <!-- corner rules -->
+  <path d="M28 62V28H62 M1538 28h34v34 M28 318v34h34 M1572 318v34h-34"
+        fill="none" stroke="#2E7D6B" stroke-opacity="0.65" stroke-width="2"/>
+
+  <!-- progressive layers, right side -->
+  <g fill="none" stroke="#2E7D6B" stroke-width="1.6">
+    <rect x="1090" y="72" width="420" height="72" rx="10" stroke-opacity="0.22"/>
+    <rect x="1118" y="152" width="392" height="72" rx="10" stroke-opacity="0.38"/>
+    <rect x="1146" y="232" width="364" height="72" rx="10" stroke-opacity="0.58"/>
+  </g>
+  <rect x="1090" y="72" width="6" height="72" rx="3" fill="#2E7D6B" fill-opacity="0.30"/>
+  <rect x="1118" y="152" width="6" height="72" rx="3" fill="#2E7D6B" fill-opacity="0.58"/>
+  <rect x="1146" y="232" width="6" height="72" rx="3" fill="#2E7D6B"/>
+  <g class="mono" font-size="15" fill="#2E7D6B" fill-opacity="0.85" letter-spacing="3">
+    <text x="1114" y="114">EXPAND / 展开学习</text>
+    <text x="1142" y="194">RECALL / 回忆重建</text>
+    <text x="1170" y="274">ASSESS · REPLAY / 检验 · 重放</text>
+  </g>
+  <circle cx="1510" cy="72" r="5" fill="#E8A33D"/>
+  <path d="M1510 77v235" stroke="#E8A33D" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="4 7"/>
+
+  <!-- left copy -->
+  <text x="70" y="72" class="mono" font-size="14" letter-spacing="4" fill="#2E7D6B">INFH5000  ·  GROUP 8  ·  2026</text>
+  <text x="66" y="166" class="en" font-size="92" font-weight="700" fill="url(#ink)">LabFlow</text>
+  <rect x="70" y="188" width="440" height="3" fill="url(#amber)"/>
+
+  <text x="70" y="232" class="en" font-size="27" font-weight="600" fill="#12332B">Beyond the Shortcut:</text>
+  <text x="70" y="266" class="en" font-size="27" font-weight="600" fill="#12332B">Restoring the Authentic Learning Path</text>
+  <text x="70" y="300" class="en" font-size="27" font-weight="600" fill="#12332B">for student of AI Era</text>
+
+  <text x="70" y="340" class="zh" font-size="21" fill="#2E7D6B">不止于捷径：为 AI 时代的学习者找回真实的学习路径</text>
+
+  <text x="1090" y="344" class="mono" font-size="13" letter-spacing="2" fill="#12332B" fill-opacity="0.6">PROGRESSIVE WORKFLOW RECONSTRUCTION</text>
+</svg>

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 340" width="1600" height="340" role="img" aria-label="LabFlow learning loop">
+  <defs>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2E7D6B"/>
+      <stop offset="1" stop-color="#E8A33D"/>
+    </linearGradient>
+    <pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#12332B" fill-opacity="0.10"/>
+    </pattern>
+    <style>
+      .en{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif}
+      .zh{font-family:'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif}
+      .mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace}
+    </style>
+  </defs>
+
+  <rect width="1600" height="340" fill="#F5F4EF"/>
+  <rect width="1600" height="340" fill="url(#dots)"/>
+
+  <g class="mono" font-size="13" letter-spacing="3" fill="#2E7D6B">
+    <text x="40" y="38">THE LEARNING LOOP / 学习闭环</text>
+  </g>
+  <path d="M40 52H1560" stroke="#12332B" stroke-opacity="0.14" stroke-width="1"/>
+
+  <!-- four stages -->
+  <g>
+    <rect x="40"   y="76" width="350" height="178" rx="12" fill="#FFFFFF" stroke="#12332B" stroke-opacity="0.12"/>
+    <rect x="430"  y="76" width="350" height="178" rx="12" fill="#FFFFFF" stroke="#12332B" stroke-opacity="0.12"/>
+    <rect x="820"  y="76" width="350" height="178" rx="12" fill="#FFFFFF" stroke="#12332B" stroke-opacity="0.12"/>
+    <rect x="1210" y="76" width="350" height="178" rx="12" fill="#FFFFFF" stroke="#12332B" stroke-opacity="0.12"/>
+  </g>
+  <g>
+    <rect x="40"   y="76" width="350" height="5" rx="2.5" fill="url(#bar)"/>
+    <rect x="430"  y="76" width="350" height="5" rx="2.5" fill="url(#bar)"/>
+    <rect x="820"  y="76" width="350" height="5" rx="2.5" fill="url(#bar)"/>
+    <rect x="1210" y="76" width="350" height="5" rx="2.5" fill="url(#bar)"/>
+  </g>
+
+  <g class="mono" font-size="14" fill="#E8A33D" letter-spacing="2">
+    <text x="64" y="112">01</text><text x="454" y="112">02</text>
+    <text x="844" y="112">03</text><text x="1234" y="112">04</text>
+  </g>
+  <g class="en" font-size="27" font-weight="700" fill="#12332B">
+    <text x="64" y="150">Expand</text><text x="454" y="150">Recall</text>
+    <text x="844" y="150">Assess</text><text x="1234" y="150">Replay</text>
+  </g>
+  <g class="zh" font-size="19" fill="#2E7D6B">
+    <text x="64" y="181">展开学习</text><text x="454" y="181">回忆重建</text>
+    <text x="844" y="181">检验与点评</text><text x="1234" y="181">实操重放</text>
+  </g>
+  <g class="en" font-size="14" fill="#12332B" fill-opacity="0.72">
+    <text x="64" y="212">Root → stages → steps</text>
+    <text x="454" y="212">Fill in → reconnect → rebuild</text>
+    <text x="844" y="212">Verdict first, help on request</text>
+    <text x="1234" y="212">Step navigation + node notes</text>
+  </g>
+  <g class="zh" font-size="14" fill="#12332B" fill-opacity="0.55">
+    <text x="64" y="236">总块 → 阶段 → 步骤</text>
+    <text x="454" y="236">补全 → 连线 → 空白重建</text>
+    <text x="844" y="236">只给判定，帮助需主动请求</text>
+    <text x="1234" y="236">逐步导航，笔记挂在节点上</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#2E7D6B" stroke-width="1.6" fill="none">
+    <path d="M396 165h26m-7-6 7 6-7 6"/>
+    <path d="M786 165h26m-7-6 7 6-7 6"/>
+    <path d="M1176 165h26m-7-6 7 6-7 6"/>
+  </g>
+
+  <rect x="40" y="276" width="1520" height="44" rx="8" fill="#12332B"/>
+  <text x="64" y="304" class="mono" font-size="14" letter-spacing="2" fill="#7ED6BA">ONE SHARED, VERSIONED PROTOCOL REFERENCE</text>
+  <text x="1180" y="304" class="zh" font-size="15" fill="#F5F4EF">同一份版本化实验参考，贯穿始终</text>
+</svg>

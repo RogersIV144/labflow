@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabFlow — Beyond the Shortcut</title>
+<style>
+:root{
+  --ink:#0B2620; --deep:#12332B; --jade:#2E7D6B; --mint:#7ED6BA;
+  --amber:#E8A33D; --paper:#F5F4EF; --white:#FFFFFF;
+  --line:rgba(18,51,43,.13); --muted:rgba(18,51,43,.62);
+  --sans:'Segoe UI','Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif;
+  --mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--deep);font-family:var(--sans);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--jade);text-decoration:none;border-bottom:1px solid rgba(46,125,107,.35)}
+a:hover{color:var(--amber);border-color:var(--amber)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 32px}
+.mono{font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+.en{display:block}
+.zh{display:block;color:var(--muted);font-size:.86em}
+body.mode-zh .en{display:none}
+body.mode-zh .zh{color:inherit;font-size:1em}
+body.mode-en .zh{display:none}
+body.mode-en .en{display:block}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:30;background:rgba(245,244,239,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:28px;height:62px}
+.brand{font-weight:700;font-size:19px;letter-spacing:-.02em;color:var(--deep);border:0}
+.brand i{display:inline-block;width:9px;height:9px;background:var(--amber);border-radius:50%;margin-right:9px;vertical-align:middle}
+nav .spacer{flex:1}
+nav a.lnk{font-size:13px;border:0;color:var(--muted)}
+nav a.lnk:hover{color:var(--jade)}
+.lang{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.lang button{border:0;background:transparent;padding:6px 11px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);cursor:pointer}
+.lang button.on{background:var(--deep);color:var(--mint)}
+
+/* ---------- hero ---------- */
+header{position:relative;overflow:hidden;background:
+  radial-gradient(900px 460px at 78% 8%,rgba(46,125,107,.34),transparent 70%),
+  linear-gradient(140deg,#0B2620 0%,#12332B 55%,#0E3A31 100%);
+  color:var(--paper)}
+header:before{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(rgba(126,214,186,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(126,214,186,.055) 1px,transparent 1px);
+  background-size:34px 34px}
+header:after{content:"";position:absolute;width:640px;height:640px;right:-180px;top:-260px;border:1px solid rgba(126,214,186,.18);border-radius:50%}
+.hero{position:relative;z-index:2;padding:96px 0 84px}
+.kicker{color:var(--mint);font-family:var(--mono);letter-spacing:.26em;font-size:12px}
+h1{font-size:clamp(64px,10vw,116px);line-height:.98;margin:26px 0 20px;letter-spacing:-.045em;font-weight:700}
+h1 span{color:var(--mint)}
+.tagline{font-size:clamp(22px,2.7vw,32px);font-weight:600;max-width:820px;margin:0 0 10px;line-height:1.38}
+.tagline-zh{font-size:clamp(17px,2vw,22px);color:var(--mint);margin-bottom:34px}
+.rule{width:180px;height:3px;background:linear-gradient(90deg,var(--amber),transparent);margin:0 0 30px}
+.lead{max-width:760px;font-size:16px;color:rgba(245,244,239,.82)}
+.lead .zh{color:var(--mint);font-size:.9em;margin-top:6px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:38px}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:6px;font-size:14px;font-weight:600;border:1px solid var(--mint);color:var(--ink);background:var(--mint)}
+.btn:hover{background:var(--amber);border-color:var(--amber);color:var(--ink)}
+.btn.ghost{background:transparent;color:var(--mint);border-color:rgba(126,214,186,.5)}
+.btn.ghost:hover{color:var(--amber);border-color:var(--amber)}
+.hero-stats{display:flex;flex-wrap:wrap;gap:0;margin-top:66px;border-top:1px solid rgba(126,214,186,.22)}
+.hero-stats div{padding:20px 30px 0 0;margin-right:30px;border-right:1px solid rgba(126,214,186,.16)}
+.hero-stats div:last-child{border:0}
+.hero-stats b{display:block;font-size:30px;color:var(--mint);letter-spacing:-.03em}
+.hero-stats small{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:rgba(245,244,239,.6)}
+
+/* ---------- sections ---------- */
+section{padding:78px 0}
+section.alt{background:var(--white);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sec-head{display:flex;align-items:baseline;gap:18px;margin-bottom:38px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.sec-head .num{font-family:var(--mono);color:var(--amber);font-size:13px;letter-spacing:.2em}
+h2{font-size:clamp(26px,3.4vw,38px);margin:0;letter-spacing:-.025em}
+h2 .zh{font-size:.5em;font-weight:400;letter-spacing:0;margin-top:2px}
+h3{font-size:18px;margin:0 0 6px}
+
+/* video */
+.video-frame{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(11,38,32,.20);background:var(--ink)}
+video{display:block;width:100%;height:auto;background:#000}
+.video-meta{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:20px;font-size:13px;color:var(--muted)}
+.video-meta b{color:var(--deep)}
+
+/* loop */
+.loop{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:9px;padding:22px;position:relative;overflow:hidden;transition:transform .22s ease,box-shadow .22s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(11,38,32,.10)}
+.card:before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--jade),var(--amber))}
+.card .idx{font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.2em}
+.card h3{margin-top:12px}
+.card p{font-size:13px;color:var(--muted);margin:8px 0 0}
+.loop-note{margin-top:22px;padding:16px 20px;border-left:3px solid var(--amber);background:rgba(232,163,61,.08);font-size:14px}
+
+/* comparison + evidence tables */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);background:rgba(46,125,107,.05)}
+tbody tr:hover{background:rgba(46,125,107,.035)}
+td .zh{font-size:.86em;color:var(--muted);margin-top:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.panel{border:1px solid var(--line);border-radius:9px;padding:24px;background:var(--white)}
+.panel.ok{border-top:3px solid var(--jade)}
+.panel.warn{border-top:3px solid var(--amber)}
+.panel h3{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--jade);text-transform:uppercase}
+.panel.warn h3{color:var(--amber)}
+.panel ul{margin:14px 0 0;padding-left:18px;font-size:14px}
+.panel li{margin-bottom:12px}
+.panel li .zh{font-size:.86em;color:var(--muted)}
+
+/* advantages */
+.adv{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.adv .card{min-height:168px}
+.adv .card .sym{font-size:20px;color:var(--amber);line-height:1}
+.adv .card h3{margin-top:14px}
+
+/* quickstart */
+pre{background:var(--ink);color:var(--mint);padding:22px 26px;border-radius:9px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.8}
+.pre-note{font-size:13px;color:var(--muted);margin-top:12px}
+
+footer{background:var(--ink);color:rgba(245,244,239,.72);padding:44px 0;font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:center}
+footer b{color:var(--mint);letter-spacing:.04em}
+footer .mono{color:var(--mint)}
+
+@media(max-width:900px){
+  .loop,.adv{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+  .hero{padding:70px 0 60px}
+  nav .lnk{display:none}
+}
+@media(max-width:560px){
+  .loop,.adv{grid-template-columns:1fr}
+  .wrap{padding:0 20px}
+  .hero-stats div{padding-right:18px;margin-right:18px}
+}
+</style>
+</head>
+<body class="mode-both">
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><i></i>LabFlow</a>
+    <span class="spacer"></span>
+    <a class="lnk" href="#film">Film / 影片</a>
+    <a class="lnk" href="#loop">Loop / 闭环</a>
+    <a class="lnk" href="#edge">Edge / 优势</a>
+    <a class="lnk" href="#evidence">Evidence / 依据</a>
+    <div class="lang">
+      <button data-mode="both" class="on">BOTH</button>
+      <button data-mode="zh">中</button>
+      <button data-mode="en">EN</button>
+    </div>
+  </div>
+</nav>
+
+<header id="top">
+  <div class="wrap hero">
+    <div class="kicker">INFH5000 · GROUP 8 · 2026 &nbsp;/&nbsp; PROGRESSIVE WORKFLOW RECONSTRUCTION</div>
+    <h1>Lab<span>Flow</span></h1>
+    <p class="tagline en">Beyond the Shortcut: Restoring the Authentic Learning Path for student of AI Era</p>
+    <p class="tagline-zh zh">不止于捷径：为 AI 时代的学习者找回真实的学习路径</p>
+    <div class="rule"></div>
+    <p class="lead">
+      <span class="en">Turn a lab handout into a local, layered workflow of progressive study, active recall, help-on-request and stepwise Replay. AI is always available — but the learner keeps the recall and the reasoning.</span>
+      <span class="zh">把一份实验文档变成可逐层展开、主动回忆、按需求助、实操重放的本地学习流程。AI 随时可问，但回忆与推理始终由学习者完成。</span>
+    </p>
+    <div class="cta">
+      <a class="btn" href="#film">▶ Watch the bilingual film <span class="zh" style="color:inherit;font-size:.8em">观看双语影片</span></a>
+      <a class="btn ghost" href="../README.md">README / 介绍页</a>
+      <a class="btn ghost" href="report-summary.md">Report summary / 报告摘要</a>
+    </div>
+    <div class="hero-stats">
+      <div><b>24</b><small>NODES / 节点</small></div>
+      <div><b>19</b><small>REPLAY STEPS / 步</small></div>
+      <div><b>92</b><small>TESTS PASSING / 测试</small></div>
+      <div><b>02:11</b><small>BILINGUAL FILM / 影片</small></div>
+      <div><b>4 / 5</b><small>USER RATING / 评分</small></div>
+    </div>
+  </div>
+</header>
+
+<section id="film">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">01</span><h2>The film <span class="zh">双语产品演示</span></h2></div>
+    <div class="video-frame">
+      <video controls preload="metadata" poster="assets/video-poster.png">
+        <source src="../media/LabFlow-Product-Demo-EN-v2-Bilingual.mp4" type="video/mp4">
+        Your browser does not support HTML5 video.
+      </video>
+    </div>
+    <div class="video-meta">
+      <span><b>02:11</b> · 18 shots / 18 个镜头</span>
+      <span><b>EN + 中文</b> burned-in / 内嵌双语两行</span>
+      <span><b>100%</b> real product footage / 真实产品画面</span>
+      <span>index-tts2 · Linette · original speed / 原速</span>
+    </div>
+    <p class="pre-note">
+      <span class="en">Subtitles are also available as a separate SRT, and the production pipeline is documented in the repository.</span>
+      <span class="zh">另提供外挂 SRT；录制、配音与渲染流水线在仓库内另有完整文档。</span>
+      &nbsp;<a href="../media/LabFlow-Product-Demo-EN-v2-Bilingual.srt">Download SRT / 下载字幕</a>
+      &nbsp;·&nbsp;<a href="demo-video-production-2026-11.md">Earlier production notes / 早期制作记录</a>
+    </p>
+  </div>
+</section>
+
+<section class="alt" id="shortcut">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">02</span><h2>The shortcut we refuse <span class="zh">我们拒绝的捷径</span></h2></div>
+    <p style="max-width:760px;margin:0 0 26px">
+      <span class="en">AI makes answers free. When the answer arrives too early, learning stops.</span>
+      <span class="zh">AI 让「得到答案」变得毫无成本。但答案出现得太早，学习就结束了。</span>
+    </p>
+    <table>
+      <thead><tr><th>Shortcut / 捷径</th><th>Cost / 代价</th><th>LabFlow / 我们的选择</th></tr></thead>
+      <tbody>
+        <tr><td>Read the whole protocol at once<span class="zh">一次读完整个流程</span></td>
+            <td>Recognition mistaken for recall<span class="zh">看起来懂了，其实只是认得字</span></td>
+            <td>Progressive disclosure: root → stages → steps<span class="zh">渐进披露：总块 → 阶段 → 步骤</span></td></tr>
+        <tr><td>Ask AI for the steps<span class="zh">直接问 AI 要步骤</span></td>
+            <td>The retrieval is done for you<span class="zh">该回忆的内容被直接给出</span></td>
+            <td>Verdict first; graduated help on request<span class="zh">判定优先，帮助需一级级请求</span></td></tr>
+        <tr><td>Micro-hints at every turn<span class="zh">每一步都给极细提示</span></td>
+            <td>The reasoning path is pre-chosen<span class="zh">推理路径被替你选好</span></td>
+            <td>Broad → specific → answer, plus critique<span class="zh">宽泛 → 具体 → 答案，另设详细点评</span></td></tr>
+        <tr><td>Text-only procedure<span class="zh">只看文字实验步骤</span></td>
+            <td>Names without equipment<span class="zh">认得名称，认不得仪器</span></td>
+            <td>3D bench, demo, hands-on, Replay<span class="zh">三维实验台 + 演示 + 动手 + 重放</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">03</span><h2>The learning loop <span class="zh">学习闭环</span></h2></div>
+    <div class="loop">
+      <div class="card"><span class="idx">01 / EXPAND</span><h3>展开学习</h3>
+        <p><span class="en">One root becomes stages and steps; each node carries action, rationale, checkpoint and source.</span><span class="zh">总块展开到阶段与步骤；节点含操作、原因、检查点与来源。</span></p></div>
+      <div class="card"><span class="idx">02 / RECALL</span><h3>回忆重建</h3>
+        <p><span class="en">Detail fill → order reconstruction → blank-canvas rebuild, with separate drafts.</span><span class="zh">细节补全 → 顺序重建 → 空白重建，草稿各自保留。</span></p></div>
+      <div class="card"><span class="idx">03 / ASSESS</span><h3>检验与点评</h3>
+        <p><span class="en">Verdict only by default; broad hint, specific cause, answer and critique are requested.</span><span class="zh">默认只给判定；提示、定位、答案与点评逐级请求。</span></p></div>
+      <div class="card"><span class="idx">04 / REPLAY</span><h3>实操重放</h3>
+        <p><span class="en">Stepwise navigation at the bench; notes and images live on the current node.</span><span class="zh">实验现场逐步导航，笔记与图片挂在当前节点。</span></p></div>
+    </div>
+    <div class="loop-note">
+      <b>One shared, versioned protocol reference throughout.</b>
+      <span class="zh">贯穿始终的是同一份版本化实验参考：旧题沿用旧版快照，判答结果绑定当次提交。</span>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="edge">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">04</span><h2>What makes it different <span class="zh">重点与优势</span></h2></div>
+    <div class="adv">
+      <div class="card"><div class="sym">◆</div><h3>Help never takes over <span class="zh">帮助不接管学习</span></h3>
+        <p><span class="en">A request marks the attempt assisted until a fresh independent round begins.</span><span class="zh">求助标记该回合为 assisted，直到主动开启新的独立回合。</span></p></div>
+      <div class="card"><div class="sym">◆</div><h3>One design, two disciplines <span class="zh">两套案例，一个机制</span></h3>
+        <p><span class="en">WB for order and interpretation; JTC for alignment with real Fourier optics.</span><span class="zh">WB 考顺序与解读；JTC 把光轴调节接到真实 FFT 求解。</span></p></div>
+      <div class="card"><div class="sym">◆</div><h3>Local-first <span class="zh">本地优先</span></h3>
+        <p><span class="en">Web app, reference, notes and drafts stay on the machine; deterministic checks run locally.</span><span class="zh">网页、参考、笔记都在本机；可确定的检查本地判定。</span></p></div>
+      <div class="card"><div class="sym">◆</div><h3>Honest degradation <span class="zh">不假装 AI 可用</span></h3>
+        <p><span class="en">A timeout preserves the answer and labels the fallback instead of inventing a verdict.</span><span class="zh">超时保留作答并明确标注降级，不伪造模型评价。</span></p></div>
+      <div class="card"><div class="sym">◆</div><h3>Review becomes UI <span class="zh">反馈变成界面决策</span></h3>
+        <p><span class="en">Transfer orientation and blocking order became judgement tasks with visible consequences.</span><span class="zh">转膜方向、封闭先后从「确认」改为「判断」并显示后果。</span></p></div>
+      <div class="card"><div class="sym">◆</div><h3>Agent-ready <span class="zh">可被外部 agent 接入</span></h3>
+        <p><span class="en">MCP stdio exposes context, checks, hints, notes, images and reference revisions.</span><span class="zh">MCP 暴露上下文、检查、提示、笔记、图片与参考修订。</span></p></div>
+    </div>
+  </div>
+</section>
+
+<section id="evidence">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">05</span><h2>Evidence, not adjectives <span class="zh">研究依据</span></h2></div>
+    <p style="margin:0 0 24px">
+      <span class="en">The report records what held up and what has not been verified yet.</span>
+      <span class="zh">报告不只描述功能，也记录了哪里成立、哪里还没被验证。</span>
+    </p>
+    <div class="two">
+      <div class="panel ok">
+        <h3>Supported / 已被支持</h3>
+        <ul>
+          <li>Progressive disclosure + guided fill-in produced real recall on second use.<span class="zh">渐进披露与引导填空带来真实回忆：第二次无需重学即可回忆步骤、仪器与操作。</span></li>
+          <li>92 automated tests passed on <code>2d0cd48</code>; build, type check and HTTP/MCP integration clean.<span class="zh">92 项自动化测试全通过，构建、类型检查与集成检查干净。</span></li>
+          <li>Domain findings became interface decisions; critique supplied the reasons a verdict could not.<span class="zh">领域反馈转成界面决策；详细点评补上了判定给不了的理由。</span></li>
+        </ul>
+      </div>
+      <div class="panel warn">
+        <h3>Not yet verified / 尚未验证</h3>
+        <ul>
+          <li>Explanation is the weak point: steps can be rebuilt but not justified; the checker measures wording.<span class="zh">解释层最薄弱：能重建步骤却说不清原理；检查器量的是措辞。</span></li>
+          <li>Whether learners return to independent work after an assisted round is untested.<span class="zh">求助后是否回到独立练习，本轮没有数据。</span></li>
+          <li>Blank reconstruction felt premature; some features were never discovered.<span class="zh">空白重建对首次学习者过早；部分功能存在可发现性问题。</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="pre-note"><a href="report-summary.md">Full bilingual summary / 完整双语摘要</a> &nbsp;·&nbsp; <a href="LabFlow-report.pdf">Original report PDF / 原报告</a></p>
+  </div>
+</section>
+
+<section class="alt" id="start">
+  <div class="wrap">
+    <div class="sec-head"><span class="num">06</span><h2>Quick start <span class="zh">快速开始</span></h2></div>
+    <p style="margin:0 0 20px;max-width:780px">
+      <span class="en">Node.js 22+ and pnpm. Scene interaction, Replay and deterministic checks need no AI sign-in.</span>
+      <span class="zh">需要 Node.js 22+ 与 pnpm；图形操作、Replay 与可确定的客观题检查无需 AI 登录。</span>
+    </p>
+    <pre>pnpm install
+pnpm build
+pnpm start
+# open http://127.0.0.1:4317/
+
+pnpm test
+pnpm test:integration</pre>
+    <p class="pre-note"><a href="../README.md">Full engineering notes in README / 完整工程说明见 README</a></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div><b>LabFlow</b> &nbsp;·&nbsp; INFH5000 Group 8 &nbsp;·&nbsp; Qihuan ZENG · Yunhan CHEN · Xuanling LUO · Zixin XU</div>
+    <div class="mono">BEYOND THE SHORTCUT / 不止于捷径</div>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.lang button').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.lang button').forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    document.body.className = 'mode-' + btn.dataset.mode;
+  });
+});
+</script>
+</body>
+</html>

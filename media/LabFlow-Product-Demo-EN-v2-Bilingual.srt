@@ -1,0 +1,89 @@
+1
+00:00:00,300 --> 00:00:07,107
+Start with the experiment document: learning, recall practice, assessment and Replay all begin on this one page
+第一次使用，先打开这份实验文档；学习、回忆训练、检验和 Replay 都从这一页进入
+
+2
+00:00:08,705 --> 00:00:15,055
+First get to know the lab scene: drag to rotate the three-dimensional bench, scroll to zoom in on each instrument
+第一步先熟悉实验场景：按住拖动可以旋转视角，滚轮能放大看清每件器材
+
+3
+00:00:16,653 --> 00:00:22,243
+Unsure about a step, hit Watch Demo and the animation plays that whole step for you
+不确定怎么操作时，点观看演示，动画会把当前这一步完整做一遍
+
+4
+00:00:23,841 --> 00:00:29,751
+Back on the flow map, hit Expand Learning to break one root block into stages and then concrete steps
+回到流程图，点展开学习，把总块逐层拆成阶段和具体步骤
+
+5
+00:00:31,349 --> 00:00:37,819
+Open any node and the right panel shows the action, the reason, the check point and the source passage
+不确定某个节点时点开它，右边会给出操作、原因、检查点和原文来源
+
+6
+00:00:39,417 --> 00:00:43,527
+Select a node and ask, the answer stays in the conversation on the right
+还有疑问就选中节点直接提问，回答会留在右侧的对话里
+
+7
+00:00:45,125 --> 00:00:50,478
+Move on to recall practice, where step names are hidden and you fill them back onto the map
+学完就练：进入回忆训练，把被藏掉的步骤名称在图上补回来
+
+8
+00:00:52,076 --> 00:00:57,906
+Hit Check Answer and the interface gives only a verdict, it never reveals the answer itself
+填好点检查答案，界面只给判定，不会直接把答案跳出来
+
+9
+00:00:59,504 --> 00:01:03,694
+When stuck, request a hint, the right side opens one direction
+卡住了就请求提示，右侧会展开一条思考方向
+
+10
+00:01:05,292 --> 00:01:11,701
+Try order rebuild next, reconnect the scattered nodes into dependencies and align the canvas in one click
+再用顺序重建练一遍：把打散的节点连回依赖关系，画布一键排齐
+
+11
+00:01:13,299 --> 00:01:17,874
+Hit Next Question and the blanks redistribute while the prompt set changes with them
+点换一题，空白节点会重新分布，题目也换了一批
+
+12
+00:01:19,472 --> 00:01:26,180
+Finally take the assessment, collapse the help and write your judgement and the missing evidence as one answer
+最后进检验：收起帮助，把自己的判断和缺的证据写成一段话
+
+13
+00:01:27,778 --> 00:01:33,448
+After submitting, the interface moves into review and marks who provided the evaluation
+提交后界面进入检查，评价由谁给出会一起标明
+
+14
+00:01:35,046 --> 00:01:42,140
+Open detailed feedback and every comment refers to one sentence, with a category and a revision suggestion
+点详细点评，每一条都对着原句，给出类别和修订建议
+
+15
+00:01:43,738 --> 00:01:49,948
+Later during the experiment, switch to Replay, follow the steps and the notes stay attached to the current node
+之后做实验时切到 Replay，照着步骤走，笔记就记在当前节点上
+
+16
+00:01:51,546 --> 00:01:56,376
+Switch to the optics experiment, the flow map starts from the same root block
+换到光学实验也是同一套：流程图从同一个总块开始
+
+17
+00:01:57,974 --> 00:02:03,289
+Open the optics lab scene, the simulator solves the spectrum and correlation planes
+打开光学实验场景，仿真器算出频谱面和相关平面
+
+18
+00:02:04,887 --> 00:02:09,897
+Ask the study partner on the right whenever you need it, it answers against your own experiment
+有不懂的随时问右侧的学习伙伴，它会对着你的实验回答
